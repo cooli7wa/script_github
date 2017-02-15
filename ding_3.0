@@ -1,0 +1,148 @@
+complete -F __ding_cmd_HUB 2ding
+complete -F __ding_cmd_HUB ding
+function __ding_cmd
+{
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local options="`cut -d " " -f 1 ~/.ding`"
+    COMPREPLY=( $(compgen -W "${options}" -- ${cur}) )
+}
+function __ding_cmd_HUB
+{
+	case $COMP_CWORD in
+	0)  ;;
+	1)  if [ ${COMP_WORDS[0]} == 2ding ];then
+		    eval __ding_cmd
+		fi
+		;;
+	2)  if [ ${COMP_WORDS[0]} == ding -a ${COMP_WORDS[1]} == '-d' ];then
+	        eval __ding_cmd
+	    fi
+	    ;;
+	esac
+}
+function ding
+{
+	local DING_FILE_PATH="$HOME/.ding"
+	if [ $# -eq 0 ]
+	then
+		if [ -e $DING_FILE_PATH ]
+		then
+		    cat $DING_FILE_PATH | sort | while read line
+		    do
+		        echo -e "\033[31m`echo -n $line | cut -d ' ' -f 1`	\033[36m`echo -n $line | cut -d ' ' -f 2-`\033[0m"
+		    done
+		else
+		    echo "No ding file"
+		fi
+	fi
+
+	OPTIND=0
+	while getopts :Dd:hvz opt
+	do
+		case $opt in
+		d)	if [ -e $DING_FILE_PATH ]
+       	    then
+       	        grep "^$OPTARG " $DING_FILE_PATH > /dev/null
+				ret=$?
+				if [ $ret -eq 0 ]
+				then
+					cp $DING_FILE_PATH "$DING_FILE_PATH.bak"
+				fi
+				sed -i "/^$OPTARG /d" $DING_FILE_PATH
+				if [ $ret -eq 0 ]
+				then
+					echo -e "\033[31mDel ding \033[36m$OPTARG\033[0m"
+				else
+					echo -e "\033[31mNo such ding \033[36m$OPTARG\033[0m"
+				fi
+       	    else
+       	        echo "No ding file"
+       	    fi
+			;;
+		D)	if [ -e $DING_FILE_PATH ]
+			then
+				cp $DING_FILE_PATH "$DING_FILE_PATH.bak"
+				rm $DING_FILE_PATH
+				echo "Del all dings"
+			else
+				echo "No ding file"
+			fi
+			;;
+		h)	echo "Usage: ding [-dDzvh] [DING_NAME]"
+			echo "ding DING_NAME : store current path to \"DING_NAME\""
+			echo "ding : list all stored dings"
+			echo "ding -d DING_NAME : delete existing ding named \"DING_NAME\", can user regexp"
+			echo "ding -D : delete all dings stored"
+			echo "ding -z : roll back the previous revision"
+			echo "ding -v : show version"
+			echo "ding -h : show usage"
+			;;
+		v)	echo "Version 3.0"
+			echo "Designed by liuqi@microtrust.com.cn"
+			;;
+		z)	if [ -e "$DING_FILE_PATH.bak" ]
+			then
+				mv "$DING_FILE_PATH.bak" $DING_FILE_PATH
+				echo "Back in time"
+			else
+				echo "No ding back file"
+			fi
+			;;
+		?)	echo "Invalid option, use -h to see usage"
+			;;
+		esac
+	done
+
+	shift $((OPTIND - 1))
+	
+	if [ $# -eq 1 ]
+    then
+        if [ -e $DING_FILE_PATH ]
+        then
+			cp $DING_FILE_PATH "$DING_FILE_PATH.bak"
+            sed -i "/^$1 /d" $DING_FILE_PATH
+        fi
+
+        DING_NAME="$1 $PWD"
+        echo -e "$DING_NAME" >> $DING_FILE_PATH
+        echo -e "\033[31mDing \033[36m$PWD \033[31mto \033[36m$1\033[0m"
+	fi
+}
+function 2ding
+{
+	local DING_FILE_PATH="$HOME/.ding"
+    OPTIND=0
+	while getopts :vh opt
+	do
+		case $opt in
+			h)  echo "Usage: 2ding [-vh] [DING_NAME]"
+				echo "2ding DING_NAME : jump to the path stored in \"DING_NAME\""
+				echo "2ding -v : show version"
+				echo "2ding -h : show usage"
+				;;
+			v)	echo "Version 3.0"
+				echo "Designed by liuqi@microtrust.com.cn"
+				;;
+			?)	echo "Invalid option, use -h to see usage"
+				;;
+		esac
+	done
+	shift $((OPTIND - 1))
+
+	path=""
+    if [ $# -eq 1 ]
+    then
+        if [ -e $DING_FILE_PATH ]
+        then
+            path=`sed -n "/^$1 /p" $DING_FILE_PATH`
+            if [ "$path" != "" ]
+            then
+                cd "`echo -n "$path" | cut -d ' ' -f 2-`"
+            else
+                echo "Not find path"
+            fi
+        else
+            echo "No ding file"
+        fi
+    fi
+}
