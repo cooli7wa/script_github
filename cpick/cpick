@@ -1,0 +1,72 @@
+function cpick
+{
+	cpick_commit="cpick_commit.tmp"
+	cpick_tmp="cpick_tmp.tmp"
+	cpick_is_error="cpick_is_error.tmp"
+    
+	OPTIND=0
+	while getopts :h opt
+	do
+		case $opt in
+			h)  echo "Usage: cpick [-h] [branchA branchB]"
+				return
+				;;
+			?)	echo "Invalid option, use -h to see usage"
+				return
+				;;
+		esac
+	done
+	shift $((OPTIND - 1))
+
+	echo 0 > $cpick_is_error
+# three argvs, two possible
+# 1. new pick -> execute flow
+# 2. old pick not complete -> do nothing
+	if [ $# -eq 2 ];then
+		if [ ! -e $cpick_commit ];then
+			git cherry -v $1 $2 > $cpick_commit
+			if [ $? -ne 0 ];then
+				rm cpick*.tmp
+				return
+			fi
+			sed -i "/^- /d" $cpick_commit
+			cut -d " " -f 2 $cpick_commit > $cpick_tmp
+			mv $cpick_tmp $cpick_commit
+		fi
+	fi
+# 1. new pick, but commit is null
+# 2. old pick, but commit left is null
+# 3. error input
+	if [ ! -e $cpick_commit ];then
+		rm $cpick_is_error
+		echo "no commit file"
+		echo "usage: cpick [branchA branchB]"
+		return
+	else
+		if [ ! -s $cpick_commit ];then
+			echo "commits file is empty, nothing to pick, cherry-pick complete"
+			rm cpick*.tmp
+			return
+		fi
+	fi
+# cherry-pick commits
+	cat $cpick_commit | while read line
+	do
+		sed -i "/$line/d" $cpick_commit
+		git cherry-pick $line
+		if [ $? -ne 0 ];then
+			echo 1 > $cpick_is_error
+			break
+		fi
+	done
+
+	if [ `cat $cpick_is_error` -eq 1 ];then
+		echo -e "\033[31mcherry-pick error, please fix it\033[0m"
+		rm $cpick_is_error
+		return
+	else
+		echo -e "\033[32mcherry-pick complete\033[0m"
+		rm cpick*.tmp
+		return
+	fi
+}
