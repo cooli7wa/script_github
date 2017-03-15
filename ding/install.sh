@@ -4,7 +4,6 @@ from_file=""
 bak_file="$HOME/.bashrc.bak.`date +\%Y_\%m_\%d_\%H_\%M_\%S`"
 tmp_file="./ding_install_bashrc.tmp"
 tmp_file1="./ding_install_bashrc.tmp1"
-tmp_file2="./ding_install_filename.tmp"
 #==== del old funcs ====
 func_list=(
 		"__ding_cmd"
@@ -14,10 +13,8 @@ func_list=(
 		"dingd"
 		"2ding"
 )
-find ding_* | sort -r | head -1 > $tmp_file2
-from_file=`cat $tmp_file2`
+from_file=`find ding_* | sort -r | head -1`
 echo "install: $from_file"
-rm $tmp_file2
 cp $to_file $bak_file
 cp $to_file $tmp_file
 sed -i "/^DING_FILE_PATH/d" $tmp_file
