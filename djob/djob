@@ -1,0 +1,131 @@
+#!/bin/bash -
+IFS="\040\t\n"
+PATH=/usr/local/bin:/bin:/user/bin
+export PATH
+
+verbose=
+show_complete_job=
+date_from=
+date_to=
+days=
+djob_list="./djob_list"
+
+error()
+{
+	echo "$@" 1>&2
+	usage_and_exit 1
+}
+
+usage_and_exit()
+{
+	echo "Usage: djob [--verbose][--complete][--date<xxxx>][--help]
+			--date 20170314-20170315 : jobs from 20170314 to 20170315
+			--date 3d : jobs within three days
+			--date 1w : jobs within one week
+			--date all : all jobs
+			--verbose : show the detailed task information
+			--complete : show complete jobs
+			--help : show useage
+		 "
+	eval "exit $1"
+}
+
+title_print()
+{
+	local title=`sed -n 1p "$djob_list"`
+	echo "$title"
+}
+
+job_print()
+{
+	echo job_print
+}
+
+date_print()
+{
+	echo -e "\033[31m${1:0:4}.${1:4:2}.${1:6:2}\033[0m"
+}
+
+show_job_list()
+{
+	echo show_job_list
+	date_print "$date_from"
+	title_print
+}
+
+#add_job()
+add_job()
+{
+	echo add_job
+}
+
+#del_job()
+#@job_number:inner job number
+del_job()
+{
+	echo del_job
+}
+
+#add_update()
+#@job_number:inner job number
+add_update()
+{
+	echo add_update
+}
+
+#del_update()
+#@job_number:inner job number
+del_update()
+{
+	echo del_update
+}
+
+#edit_update()
+#@job_number:inner job number
+edit_update()
+{
+	echo edit_update
+}
+
+if [ "$#" -ne 0 ]
+then
+	while [ "$#" -gt 0 ]
+	do
+		case $1 in
+		--verbose )
+			verbose=yes
+			;;
+		--complete )
+			show_complete_job=yes
+			;;
+		--date )
+			case $2 in
+			*d)
+				#TODO : should fix, month is 30days
+				days=`echo "$2" | sed -r "s/^([0-9]+)d/\1/g"`
+				date_from=$((`date +\%Y\%m\%d`-$days))
+				date_to=`date +\%Y\%m\%d`
+				shift
+				;;
+			*)
+				break
+				;;
+			esac
+			;;
+		--help | -h | '--?' | '-?' )
+			usage_and_exit 0
+			;;
+		-* | --* )
+			error "Unrecongnized option: $1"
+			;;
+		*)
+			break
+			;;
+		esac
+		shift
+	done
+else
+date_from=`date +\%Y\%m\%d`
+date_to=$date_from
+fi
+show_job_list
