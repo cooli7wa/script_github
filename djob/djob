@@ -1,7 +1,7 @@
 #!/bin/bash -
 IFS="\040\t\n"
-PATH=/usr/local/bin:/bin:/user/bin
-export PATH
+#PATH=/usr/local/bin:/bin:/user/bin
+#export PATH
 
 verbose=
 show_complete_job=
@@ -33,12 +33,18 @@ usage_and_exit()
 title_print()
 {
 	local title=`sed -n 1p "$djob_list"`
-	echo "$title"
+	title=${title//:/    }
+    echo $title
 }
 
 job_print()
 {
-	echo job_print
+	if [ "z`echo "$1" | cut -d : -f 4`" != "z" ]
+    then
+        echo -e "\033[32m${1//:/   }\033[0m"
+    else
+        echo "${1//:/   }"
+    fi
 }
 
 date_print()
@@ -46,11 +52,14 @@ date_print()
 	echo -e "\033[31m${1:0:4}.${1:4:2}.${1:6:2}\033[0m"
 }
 
-show_job_list()
+show_daily_job()
 {
-	echo show_job_list
-	date_print "$date_from"
+	
+    date_print "$date_from"
 	title_print
+    
+    local job=`sed -n "4p" "$djob_list"`
+    job_print "$job"
 }
 
 #add_job()
@@ -85,6 +94,11 @@ del_update()
 edit_update()
 {
 	echo edit_update
+}
+
+cal_date_from()
+{
+
 }
 
 if [ "$#" -ne 0 ]
@@ -128,4 +142,6 @@ else
 date_from=`date +\%Y\%m\%d`
 date_to=$date_from
 fi
-show_job_list
+
+for((i=0;i))
+show_daily_job
