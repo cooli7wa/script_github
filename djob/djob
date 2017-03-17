@@ -1,7 +1,7 @@
 #!/bin/bash -
 IFS="\040\t\n"
-#PATH=/usr/local/bin:/bin:/user/bin
-#export PATH
+PATH=/usr/local/bin:/bin:/usr/bin
+export PATH
 
 verbose=
 show_complete_job=
@@ -46,20 +46,24 @@ job_print()
         echo "${1//:/   }"
     fi
 }
+export -f job_print
 
 date_print()
 {
 	echo -e "\033[31m${1:0:4}.${1:4:2}.${1:6:2}\033[0m"
 }
 
+#根据传入的date，来显示当前date的jobs
 show_daily_job()
 {
-	
-    date_print "$date_from"
-	title_print
-    
-    local job=`sed -n "4p" "$djob_list"`
-    job_print "$job"
+#	set -x
+	awk -F: 'BEGIN{date="'"$1"'"}
+			{
+				if( $4 ~ 20170316 ){
+					"job_print "$0
+				}
+			
+			}' "$djob_list"
 }
 
 #add_job()
@@ -98,7 +102,7 @@ edit_update()
 
 cal_date_from()
 {
-
+	echo cal_date_from
 }
 
 if [ "$#" -ne 0 ]
@@ -143,5 +147,9 @@ date_from=`date +\%Y\%m\%d`
 date_to=$date_from
 fi
 
-for((i=0;i))
-show_daily_job
+title_print
+for((i="$date_from" ; i<="$date_to" ; i++))
+do
+	echo "$i"
+	show_daily_job "$i"
+done
