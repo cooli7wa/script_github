@@ -1,5 +1,6 @@
 #!/bin/bash -
-IFS="\040\t\n"
+IFS="
+	 "
 PATH=/usr/local/bin:/bin:/usr/bin
 export PATH
 
@@ -37,6 +38,8 @@ title_print()
     echo $title
 }
 
+#job_print()
+#@job_line
 job_print()
 {
 	if [ "z`echo "$1" | cut -d : -f 4`" != "z" ]
@@ -45,6 +48,16 @@ job_print()
     else
         echo "${1//:/   }"
     fi
+}
+
+print_job_message()
+{
+#   show job info
+	job_print "`sed -n "/^"$1":/p" "$djob_list"`"
+#   show job update
+	echo show_job_update 
+#   show job summarize, if exist 
+	echo show_job_summarize
 }
 
 date_print()
@@ -97,14 +110,43 @@ show_daily_job()
 #add_job()
 add_job()
 {
-	echo add_job
+    echo "new job format: title@youxianji"
+	read -p "enter: " title_priority
+	local title=`echo "$title_priority" | cut -d @ -f 1`
+	local priority=`echo "$title_priority" | cut -d @ -f 2`
+	local current_max_num="`sed -n '2,$p' "$djob_list" | cut -d : -f 1 | sort -nr | head -1`"
+	local inner_number=$(($current_max_num+1))
+	echo ""$inner_number":"$title":"`date +\%Y\%m\%d\%H\%M`"::"$priority"" >> "$djob_list"
 }
 
+#edit_job()
+edit_job_info()
+{
+	read -p "enter innernumber: " inner_number
+	echo "job format: title@priority"
+	read -p "enter: " title_priority
+	local title=`echo "$title_priority" | cut -d @ -f 1`
+	local priority=`echo "$title_priority" | cut -d @ -f 2`
+    local job_info=`sed -n "/^"$inner_number":/p" "$djob_list"`
+	local date_create=`echo -n "$job_info" | cut -d : -f 3`
+	local date_complete=`echo -n "$job_info" | cut -d : -f 4`
+	sed -i "/^"$inner_number":/d" "$djob_list"
+	echo ""$inner_number":"$title":"$date_create":"$date_complete":"$priority"" >> "$djob_list"
+}
+
+#show_job()
+show_job()
+{
+    echo "enter job inner number"
+    read choosen_job
+    print_job_message "$choosen_job"
+}
 #del_job()
-#@job_number:inner job number
 del_job()
 {
-	echo del_job
+    echo "enter job inner number"
+    read choosen_job
+	sed -i "/^"$choosen_job":/d" "$djob_list"
 }
 
 #add_update()
@@ -177,3 +219,37 @@ do
 	date_print "$i"
 	show_daily_job "$i"
 done
+
+read nouse
+echo "What to do next:
+ 1 : add new job
+ 2 : edit job info
+ 3 : add update
+ 4 : show job
+ 5 : del job
+ 6 : complete job
+ 7 : add summarize
+ 0 : exit"
+read -p "your choose: " choose
+case "$choose" in
+1)
+    add_job
+	;;
+2)
+	edit_job_info
+	;;
+3)
+	;;
+4)
+	show_job
+    ;;
+5)
+	del_job
+	;;
+0)
+    exit 0
+    ;;
+*)
+	error "Unrecongnized option"
+    ;;
+esac
