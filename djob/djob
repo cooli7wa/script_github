@@ -110,7 +110,8 @@ show_daily_job()
 #add_job()
 add_job()
 {
-    echo "new job format: title@youxianji"
+    local title_priority
+	echo "new job format: title@youxianji"
 	read -p "enter: " title_priority
 	local title=`echo "$title_priority" | cut -d @ -f 1`
 	local priority=`echo "$title_priority" | cut -d @ -f 2`
@@ -122,8 +123,10 @@ add_job()
 #edit_job()
 edit_job_info()
 {
+	local inner_number
 	read -p "enter innernumber: " inner_number
 	echo "job format: title@priority"
+	local title_priority
 	read -p "enter: " title_priority
 	local title=`echo "$title_priority" | cut -d @ -f 1`
 	local priority=`echo "$title_priority" | cut -d @ -f 2`
@@ -137,37 +140,59 @@ edit_job_info()
 #show_job()
 show_job()
 {
-    echo "enter job inner number"
+    local choosen_job
+	echo "enter job inner number"
     read choosen_job
     print_job_message "$choosen_job"
 }
 #del_job()
 del_job()
 {
+	local choosen_job
     echo "enter job inner number"
     read choosen_job
 	sed -i "/^"$choosen_job":/d" "$djob_list"
 }
 
+complete_job()
+{
+	local choosen_job
+    echo "enter job inner number"
+    read choosen_job
+
+}
+
 #add_update()
-#@job_number:inner job number
 add_update()
 {
-	echo add_update
+	local choosen_job
+	echo "enter job inner number"
+	read choosen_job
+	echo "please enter update message: "
+	local IFS_BAK="$IFS"
+	IFS="\n"
+	local message
+	read  message
+	IFS="$IFS_BAK"
+	if [ ! -e "$choosen_job".job ]
+	then
+		cp example.job "$choosen_job".job
+	    local job_info=`sed -n "/^"$choosen_job":/p" "$djob_list"`
+		local title=`echo -n "$job_info" | cut -d : -f 2`
+	    local date_create=`echo -n "$job_info" | cut -d : -f 3`
+	    local date_complete=`echo -n "$job_info" | cut -d : -f 4`
+		local priority=`echo -n "$job_info" | cut -d : -f 5`
+		sed -r -i "s/(内部编号:)/\1"$choosen_job"/g;s/(标题:)/\1"$title"/g;
+				 s/(创建日期:)/\1"$date_create"/g;s/(完成日期:)/\1"$date_complete"/g;
+				 s/(优先级:)/\1"$priority"/g" "$choosen_job".job
+	fi
+	sed -i "/end update/i`date +\%Y\%m\%d\%H\%M`" "$choosen_job".job
+	sed -i "/end update/i$message" "$choosen_job".job
 }
 
-#del_update()
-#@job_number:inner job number
-del_update()
+add_summarize()
 {
-	echo del_update
-}
-
-#edit_update()
-#@job_number:inner job number
-edit_update()
-{
-	echo edit_update
+	echo add_summarize
 }
 
 cal_date_from()
@@ -239,12 +264,19 @@ case "$choose" in
 	edit_job_info
 	;;
 3)
+	add_update
 	;;
 4)
 	show_job
     ;;
 5)
 	del_job
+	;;
+6)
+	complete_job
+	;;
+7)
+	add_summarize
 	;;
 0)
     exit 0
