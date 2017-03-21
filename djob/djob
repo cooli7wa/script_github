@@ -4,12 +4,12 @@ IFS="
 PATH=/usr/local/bin:/bin:/usr/bin
 export PATH
 
-show_complete_job=1
 date_from=
 date_to=
 days=
-djob_list="./djob_list"
-djob_list_tmp="./djob_list_tmp"
+djob_file_path="$HOME""/djob_file/"
+djob_list="$djob_file_path""djob_list"
+djob_list_tmp="$djob_job_file_path""djob_list_tmp"
 
 error()
 {
@@ -39,10 +39,10 @@ title_print()
 }
 
 #job_print()
-#@job_line
+#@in job_line
 job_print()
 {
-	if [ "z`echo "$1" | cut -d : -f 4`" != "z" ]
+	if [ "z`echo "$1" | cut -s -d : -f 4`" != "z" ]
     then
         echo -e "\033[32m${1//:/   }\033[0m"
     else
@@ -50,12 +50,27 @@ job_print()
     fi
 }
 
+#show_job_update
+#@in inner_number
+show_job_update()
+{
+	awk 'BEGIN{eprint=0}
+		{
+			if($0~/\[update\]/)
+				eprint=1;
+			else if($0~/\[end update\]/)
+				eprint=0;
+			if(eprint)
+				print;
+		}' "$djob_file_path""$1".job
+}
+
 print_job_message()
 {
 #   show job info
 	job_print "`sed -n "/^"$1":/p" "$djob_list"`"
 #   show job update
-	echo show_job_update 
+	show_job_update "$1"
 #   show job summarize, if exist 
 	echo show_job_summarize
 }
@@ -81,7 +96,7 @@ show_daily_job()
 		then
 			cat "$djob_list" | while read line
 			do
-				if [[ "`echo -n "$line" | cut -d : -f 4`" =~ "$1" ]] || [[ -z "`echo -n "$line" | cut -d : -f 4`" ]]
+				if [[ "`echo -n "$line" | cut -s -d : -f 4`" =~ "$1" ]] || [[ -z "`echo -n "$line" | cut -s -d : -f 4`" ]]
 				then
 					job_print "$line"
 				fi
@@ -89,7 +104,7 @@ show_daily_job()
 		else
 			cat "$djob_list" | while read line
 			do
-				if [[ -z "`echo -n "$line" | cut -d : -f 4`" ]]
+				if [[ -z "`echo -n "$line" | cut -s -d : -f 4`" ]]
 				then
 					job_print "$line"
 				fi
@@ -98,7 +113,7 @@ show_daily_job()
 	else
 		cat "$djob_list" | while read line
 		do
-			if [[ "`echo -n "$line" | cut -d : -f 4`" =~ "$1" ]]
+			if [[ "`echo -n "$line" | cut -s -d : -f 4`" =~ "$1" ]]
 			then
 				job_print "$line"
 			fi
@@ -113,9 +128,15 @@ add_job()
     local title_priority
 	echo "new job format: title@youxianji"
 	read -p "enter: " title_priority
-	local title=`echo "$title_priority" | cut -d @ -f 1`
-	local priority=`echo "$title_priority" | cut -d @ -f 2`
-	local current_max_num="`sed -n '2,$p' "$djob_list" | cut -d : -f 1 | sort -nr | head -1`"
+	local title=`echo "$title_priority" | cut -s -d @ -f 1`
+	local priority=`echo "$title_priority" | cut -s -d @ -f 2`
+	if [ z$priority == z"" ] 
+	then
+		title="$title_priority"
+		priority=1
+		echo "Apply default priority 1"
+	fi
+	local current_max_num="`sed -n '2,$p' "$djob_list" | cut -s -d : -f 1 | sort -nr | head -1`"
 	local inner_number=$(($current_max_num+1))
 	echo ""$inner_number":"$title":"`date +\%Y\%m\%d\%H\%M`"::"$priority"" >> "$djob_list"
 }
@@ -128,11 +149,16 @@ edit_job_info()
 	echo "job format: title@priority"
 	local title_priority
 	read -p "enter: " title_priority
-	local title=`echo "$title_priority" | cut -d @ -f 1`
-	local priority=`echo "$title_priority" | cut -d @ -f 2`
+	local title=`echo "$title_priority" | cut -s -d @ -f 1`
+	local priority=`echo "$title_priority" | cut -s -d @ -f 2`
+	if [ z$priority == z"" ] 
+	then
+		title="$title_priority"
+		echo "Apply default priority 1"
+	fi
     local job_info=`sed -n "/^"$inner_number":/p" "$djob_list"`
-	local date_create=`echo -n "$job_info" | cut -d : -f 3`
-	local date_complete=`echo -n "$job_info" | cut -d : -f 4`
+	local date_create=`echo -n "$job_info" | cut -s -d : -f 3`
+	local date_complete=`echo -n "$job_info" | cut -s -d : -f 4`
 	sed -i "/^"$inner_number":/d" "$djob_list"
 	echo ""$inner_number":"$title":"$date_create":"$date_complete":"$priority"" >> "$djob_list"
 }
@@ -159,7 +185,8 @@ complete_job()
 	local choosen_job
     echo "enter job inner number"
     read choosen_job
-
+	local date="`date +\%Y\%m\%d\%H\%M`"
+	sed -i -r "s/(^$choosen_job:.*:.*:)(:[0-9]$)/\1$date\2/g" "$djob_list"
 }
 
 #add_update()
@@ -174,20 +201,20 @@ add_update()
 	local message
 	read  message
 	IFS="$IFS_BAK"
-	if [ ! -e "$choosen_job".job ]
+	if [ ! -e "$djob_file_path""$choosen_job".job ]
 	then
-		cp example.job "$choosen_job".job
+		cp "$djob_file_path"example.job "$djob_file_path""$choosen_job".job
 	    local job_info=`sed -n "/^"$choosen_job":/p" "$djob_list"`
-		local title=`echo -n "$job_info" | cut -d : -f 2`
-	    local date_create=`echo -n "$job_info" | cut -d : -f 3`
-	    local date_complete=`echo -n "$job_info" | cut -d : -f 4`
-		local priority=`echo -n "$job_info" | cut -d : -f 5`
+		local title=`echo -n "$job_info" | cut -s -d : -f 2`
+	    local date_create=`echo -n "$job_info" | cut -s -d : -f 3`
+	    local date_complete=`echo -n "$job_info" | cut -s -d : -f 4`
+		local priority=`echo -n "$job_info" | cut -s -d : -f 5`
 		sed -r -i "s/(内部编号:)/\1"$choosen_job"/g;s/(标题:)/\1"$title"/g;
 				 s/(创建日期:)/\1"$date_create"/g;s/(完成日期:)/\1"$date_complete"/g;
-				 s/(优先级:)/\1"$priority"/g" "$choosen_job".job
+				 s/(优先级:)/\1"$priority"/g" "$djob_file_path""$choosen_job".job
 	fi
-	sed -i "/end update/i`date +\%Y\%m\%d\%H\%M`" "$choosen_job".job
-	sed -i "/end update/i$message" "$choosen_job".job
+	sed -i "/end update/i`date +\%Y\%m\%d\%H\%M`" "$djob_file_path""$choosen_job".job
+	sed -i "/end update/i$message" "$djob_file_path""$choosen_job".job
 }
 
 add_summarize()
