@@ -4,6 +4,7 @@ IFS="
 PATH=/usr/local/bin:/bin:/usr/bin
 export PATH
 
+show_complete_job=1
 date_from=
 date_to=
 days=
@@ -67,12 +68,14 @@ show_job_update()
 
 print_job_message()
 {
-#   show job info
+	echo ""
+#	show title
+	title_print
+#	show job info
 	job_print "`sed -n "/^"$1":/p" "$djob_list"`"
-#   show job update
+#	show job update
 	show_job_update "$1"
 #   show job summarize, if exist 
-	echo show_job_summarize
 }
 
 date_print()
@@ -209,9 +212,9 @@ add_update()
 	    local date_create=`echo -n "$job_info" | cut -s -d : -f 3`
 	    local date_complete=`echo -n "$job_info" | cut -s -d : -f 4`
 		local priority=`echo -n "$job_info" | cut -s -d : -f 5`
-		sed -r -i "s/(内部编号:)/\1"$choosen_job"/g;s/(标题:)/\1"$title"/g;
-				 s/(创建日期:)/\1"$date_create"/g;s/(完成日期:)/\1"$date_complete"/g;
-				 s/(优先级:)/\1"$priority"/g" "$djob_file_path""$choosen_job".job
+		sed -r -i "s/(内部编号:)/\1$choosen_job/g;s/(标题:)/\1$title/g;
+				 s/(创建日期:)/\1$date_create/g;s/(完成日期:)/\1$date_complete/g;
+				 s/(优先级:)/\1$priority/g" "$djob_file_path""$choosen_job".job
 	fi
 	sed -i "/end update/i`date +\%Y\%m\%d\%H\%M`" "$djob_file_path""$choosen_job".job
 	sed -i "/end update/i$message" "$djob_file_path""$choosen_job".job
