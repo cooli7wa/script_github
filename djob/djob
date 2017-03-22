@@ -45,9 +45,14 @@ job_print()
 {
 	if [ "z`echo "$1" | cut -s -d : -f 4`" != "z" ]
     then
-        echo -e "\033[32m${1//:/   }\033[0m"
+        echo -e "\033[32m${1//:/  }\033[0m"
     else
-        echo "${1//:/   }"
+		local complete_time="no"
+        local title=`echo -n "$1" | cut -s -d : -f 2`
+        local num=`echo -n "$1" | cut -s -d : -f 1`
+        local create_time=`echo -n "$1" | cut -s -d : -f 3`
+        local priority=`echo -n "$1" | cut -s -d : -f 5`
+		echo -e ""$num"  \033[36m"$title"\033[0m  "$create_time"  "$complete_time"  "$priority""
     fi
 }
 
@@ -55,15 +60,20 @@ job_print()
 #@in inner_number
 show_job_update()
 {
-	awk 'BEGIN{eprint=0}
-		{
-			if($0~/\[update\]/)
-				eprint=1;
-			else if($0~/\[end update\]/)
-				eprint=0;
-			if(eprint)
-				print;
-		}' "$djob_file_path""$1".job
+	if [ -e "$djob_file_path""$1".job ]
+	then
+		awk 'BEGIN{eprint=0}
+			{
+				if($0~/\[update\]/)
+					eprint=1;
+				else if($0~/\[end update\]/)
+					eprint=0;
+				if(eprint)
+					print;
+			}' "$djob_file_path""$1".job
+	else
+		echo "no update"
+	fi
 }
 
 print_job_message()
@@ -277,35 +287,35 @@ done
 
 read nouse
 echo "What to do next:
- 1 : add new job
- 2 : edit job info
- 3 : add update
- 4 : show job
- 5 : del job
- 6 : complete job
- 7 : add summarize
+ aj : add new job
+ au : add update
+ as : add summarize
+ sj : show job
+ ej : edit job info
+ cj : complete job
+ dj : del job
  0 : exit"
 read -p "your choose: " choose
 case "$choose" in
-1)
+aj)
     add_job
 	;;
-2)
+ej)
 	edit_job_info
 	;;
-3)
+au)
 	add_update
 	;;
-4)
+sj)
 	show_job
     ;;
-5)
+dj)
 	del_job
 	;;
-6)
+cj)
 	complete_job
 	;;
-7)
+as)
 	add_summarize
 	;;
 0)
@@ -315,3 +325,4 @@ case "$choose" in
 	error "Unrecongnized option"
     ;;
 esac
+exit 0
