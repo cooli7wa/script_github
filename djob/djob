@@ -6,8 +6,19 @@ export PATH
 
 show_complete_job=1
 g_job_number=
+#当前date，计算用，非今天
 date_cur=
+#除了今天以外，一共需要显示的天数
 days=
+#除了这周，一共需要显示的周数
+weeks=
+#今天是星期几
+today_week_day=
+#今天的日期
+today=
+today_year=
+today_month=
+today_day=
 djob_file_path="$HOME""/djob_file/"
 djob_list="$djob_file_path""djob_list"
 djob_list_tmp="$djob_job_file_path""djob_list_tmp"
@@ -22,11 +33,9 @@ usage_and_exit()
 {
 	echo "Usage: djob [--verbose][--complete][--date<xxxx>][--help]
 			--date 20170314-20170315 : jobs from 20170314 to 20170315
-			--date 3d : jobs within three days
-			--date 1w : jobs within one week
-			--date all : all jobs
-			--verbose : show the detailed task information
-			--complete : show complete jobs
+			--date xd : jobs from x days before
+			--date xw : jobs from x week before
+			--all : all jobs
 			--help : show useage
 		 "
 	eval "exit $1"
@@ -105,7 +114,7 @@ show_daily_job()
 {
 #如果date为今天，那么两个选择，打印当天完成的job和未完成job，或者打印未完成job
 #如果date为其他，那么只打印完成的job
-	if [ "$1" == "`date +\%Y\%m\%d`" ]
+	if [ "$1" == "$today" ]
 	then
 		if [[ "$show_complete_job" -eq 1 ]]
 		then
@@ -280,44 +289,6 @@ add_summarize()
 	echo add_summarize
 }
 
-cal_date_from()
-{
-	echo cal_date_from
-}
-
-if [ "$#" -ne 0 ]
-then
-	while [ "$#" -gt 0 ]
-	do
-		case $1 in
-		--date )
-			case $2 in
-			*d)
-				days=`echo "$2" | sed -r "s/^([0-9]+)d/\1/g"`
-				shift
-				;;
-			*)
-				break
-				;;
-			esac
-			;;
-		--help | -h | '--?' | '-?' )
-			usage_and_exit 0
-			;;
-		-* | --* )
-			error "Unrecongnized option: $1"
-			;;
-		*)
-			break
-			;;
-		esac
-		shift
-	done
-else
-	days=0
-	show_complete_job=0
-fi
-
 cal_date_onedaybefore()
 {
 	local year=${date_cur:0:4}
@@ -358,9 +329,55 @@ cal_date_onedaybefore()
 	date_cur=$year`printf "%02d" $month``printf "%02d" $day`
 }
 
+
+# begin flow
+today=`date +\%Y\%m\%d`
+today_year=`expr ${today:0:4} + 0`
+today_month=`expr ${today:4:2} + 0`
+today_day=`expr ${today:6:2} + 0`
+
+if [ "$#" -ne 0 ]
+then
+	while [ "$#" -gt 0 ]
+	do
+		case $1 in
+		--date )
+			case $2 in
+			*d)
+				days=`echo "$2" | sed -r "s/^([0-9]+)d/\1/g"`
+				shift
+				;;
+			*w)
+				weeks=`echo "$2" | sed -r "s/^([0-9]+)w/\1/g"`
+				today_week_day=$(((today_day+2*today_month+3*(today_month+1)/5+today_year+today_year/4-today_year/100+today_year/400)%7+1))
+				days=$((weeks*7+today_week_day-1))
+				shift
+				;;
+			*)
+				break
+				;;
+			esac
+			;;
+		--help | -h | '--?' | '-?' )
+			usage_and_exit 0
+			;;
+		-* | --* )
+			error "Unrecongnized option: $1"
+			;;
+		*)
+			break
+			;;
+		esac
+		shift
+	done
+else
+	days=0
+	show_complete_job=0
+fi
+
 sort_job_list
 title_print
-date_cur=`date +\%Y\%m\%d`
+date_cur=$today
 for((i="$days"; i>=0; i--))
 do
 	date_print "$date_cur"
