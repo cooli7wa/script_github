@@ -6,8 +6,7 @@ export PATH
 
 show_complete_job=1
 g_job_number=
-date_from=
-date_to=
+date_cur=
 days=
 djob_file_path="$HOME""/djob_file/"
 djob_list="$djob_file_path""djob_list"
@@ -104,6 +103,8 @@ sort_job_list()
 #根据传入的date，来显示当前date的jobs
 show_daily_job()
 {
+#如果date为今天，那么两个选择，打印当天完成的job和未完成job，或者打印未完成job
+#如果date为其他，那么只打印完成的job
 	if [ "$1" == "`date +\%Y\%m\%d`" ]
 	then
 		if [[ "$show_complete_job" -eq 1 ]]
@@ -292,10 +293,7 @@ then
 		--date )
 			case $2 in
 			*d)
-				#TODO : should fix, month is 30days
 				days=`echo "$2" | sed -r "s/^([0-9]+)d/\1/g"`
-				date_from=$((`date +\%Y\%m\%d`-$days))
-				date_to=`date +\%Y\%m\%d`
 				shift
 				;;
 			*)
@@ -316,17 +314,58 @@ then
 		shift
 	done
 else
-	date_from=`date +\%Y\%m\%d`
-	date_to=$date_from
+	days=0
 	show_complete_job=0
 fi
 
+cal_date_onedaybefore()
+{
+	local year=${date_cur:0:4}
+	local month=${date_cur:4:2}
+	local day=${date_cur:6:2}
+	year=`expr $year + 0`
+	day=`expr $day + 0`
+	month=`expr $month + 0`
+
+	if (( $day==1 ))
+	then
+		if (( $month==3 ))
+		then
+			if (( $year%4==0 && $year%100!=0 || $year%400==0 ))
+			then
+				day=29
+			else
+				day=28
+			fi
+		else
+			if (( $month==1 || $month==2 || $month==4 || $month==6 || $month==8 || $month==9 || $month==11 ))
+			then
+				day=31
+			else
+				day=30
+			fi
+		fi
+		if (( $month==1 ))
+		then
+			month=12
+			year=$((year - 1))
+		else
+			month=$((month - 1))
+		fi
+	else
+		day=$((day - 1))
+	fi
+	date_cur=$year`printf "%02d" $month``printf "%02d" $day`
+}
+
 sort_job_list
 title_print
-for((i="$date_from" ; i<="$date_to" ; i++))
+date_cur=`date +\%Y\%m\%d`
+for((i="$days"; i>=0; i--))
 do
-	date_print "$i"
-	show_daily_job "$i"
+	date_print "$date_cur"
+	show_daily_job "$date_cur"
+	cal_date_onedaybefore
 done
 
 read nouse
