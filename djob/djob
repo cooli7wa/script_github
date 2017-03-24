@@ -86,12 +86,12 @@ print_job_message()
 	job_print "`sed -n "/^"$1":/p" "$djob_list"`"
 #	show job update
 	show_job_update "$1"
-#   show job summarize, if exist 
+#   TODO show job summarize, if exist 
 }
 
 date_print()
 {
-	echo -e "\033[31m${1:0:4}.${1:4:2}.${1:6:2}\033[0m"
+	echo -e "================ \033[31m${1:0:4}.${1:4:2}.${1:6:2}\033[0m ================="
 }
 
 sort_job_list()
@@ -179,6 +179,11 @@ edit_job_info()
 	local date_complete=`echo -n "$job_info" | cut -s -d : -f 4`
 	sed -i "/^"$job_number":/d" "$djob_list"
 	echo ""$job_number":"$title":"$date_create":"$date_complete":"$priority"" >> "$djob_list"
+}
+
+up_job_priority()
+{
+	echo no_finish_func
 }
 
 show_job()
@@ -327,6 +332,7 @@ echo "What to do next:
  as : add summarize. as [xxx]
  sj : show job. sj [xxx]
  ej : edit job info. ej [xxx]
+ up : up job's priority [xxx]
  cj : complete job. cj [xxx]
  ucj : uncomplete job. fj [xxx]
  dj : del job. dj [xxx]
@@ -347,6 +353,9 @@ sj)
     ;;
 ej)
 	edit_job_info
+	;;
+up)
+	up_job_priority
 	;;
 cj)
 	complete_job
