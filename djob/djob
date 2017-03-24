@@ -250,7 +250,7 @@ uncomplete_job()
 	else
 		job_number="$g_job_number"
 	fi
-	sed -i -r "s/(^$job_number:.*:.*:).*(:[0-9]$)/\1$date\2/g" "$djob_list"
+	sed -i -r "s/(^$job_number:.*:.*:).*(:[0-9]$)/\1\2/g" "$djob_list"
 }
 add_update()
 {
