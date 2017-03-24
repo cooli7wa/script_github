@@ -210,6 +210,10 @@ del_job()
 		job_number="$g_job_number"
 	fi
 	sed -i "/^"$job_number":/d" "$djob_list"
+	if [ -e "$djob_file_path""$job_number".job ]
+	then
+		rm "$djob_file_path""$job_number".job
+	fi
 }
 
 complete_job()
@@ -366,7 +370,7 @@ ucj)
 dj)
 	del_job
 	;;
-0)
+0 | "")
     exit 0
     ;;
 *)
