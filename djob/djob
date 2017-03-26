@@ -6,6 +6,7 @@ export PATH
 
 show_complete_job=1
 g_job_number=
+g_job_priority=
 #当前date，计算用，非今天
 date_cur=
 #除了今天以外，一共需要显示的天数
@@ -71,17 +72,43 @@ show_job_update()
 {
 	if [ -e "$djob_file_path""$1".job ]
 	then
-		awk 'BEGIN{eprint=0}
+		awk 'BEGIN{eprint=0;color=0}
 			{
-				if($0~/\[update\]/)
+				if ($0~/\[update\]/) {
 					eprint=1;
-				else if($0~/\[end update\]/)
+					color=0;
+				} else if ($0~/\[end update\]/) {
 					eprint=0;
-				if(eprint)
-					print;
+					color=0;
+				}
+				if (eprint) {
+					if (color) {
+						system("echo \033[31m"$0"\033[0m");
+					} else {
+						print;
+					}
+					color=!color;
+				}
 			}' "$djob_file_path""$1".job
 	else
 		echo "no update"
+	fi
+}
+
+#show job summarize
+#@in job_number
+show_job_summarize()
+{
+	local files=(`find $djob_file_path$1.summarize.* 2>/dev/null | xargs echo`)
+	if [ ${#files[@]} -ne 0 ]
+	then
+		echo =============[summarize]================
+		for ((i=0;i<${#files[@]};i++))
+		do
+			local date=`echo ${files[$i]} | sed -r "s/.*\.([0-9]+$)/\1/g"`
+			echo -e "\033[31m$date\033[0m"
+			cat ${files[$i]}
+		done
 	fi
 }
 
@@ -94,7 +121,8 @@ print_job_message()
 	job_print "`sed -n "/^"$1":/p" "$djob_list"`"
 #	show job update
 	show_job_update "$1"
-#   TODO show job summarize, if exist 
+#   show job summarize, if exist
+	show_job_summarize "$1"
 }
 
 date_print()
@@ -191,9 +219,25 @@ edit_job_info()
 	echo ""$job_number":"$title":"$date_create":"$date_complete":"$priority"" >> "$djob_list"
 }
 
-up_job_priority()
+edit_job_priority()
 {
-	echo no_finish_func
+	local job_number
+	if [ -z $g_job_number ]
+	then
+		echo "enter job number"
+		read job_number
+	else
+		job_number="$g_job_number"
+	fi
+	local job_priority
+	if [ -z $g_job_priority ]
+	then
+		echo "enter job priority"
+		read job_priority
+	else
+		job_priority="$g_job_priority"
+	fi
+	sed -i -r "s/(^$job_number:.*:)[0-9]$/\1$job_priority/g" "$djob_list"
 }
 
 show_job()
@@ -286,7 +330,16 @@ add_update()
 
 add_summarize()
 {
-	echo add_summarize
+	local job_number
+	if [ -z $g_job_number ]
+	then
+		echo "enter job number"
+		read job_number
+	else
+		job_number="$g_job_number"
+	fi
+
+	vim "$djob_file_path"/"$job_number".summarize.`date +\%Y\%m\%d\%H\%M\%S`
 }
 
 cal_date_onedaybefore()
@@ -392,12 +445,12 @@ echo "What to do next:
  as : add summarize. as [xxx]
  sj : show job. sj [xxx]
  ej : edit job info. ej [xxx]
- up : up job's priority [xxx]
+ ep : edit job's priority [xxx]
  cj : complete job. cj [xxx]
  ucj : uncomplete job. fj [xxx]
  dj : del job. dj [xxx]
  0 : exit"
-read -p "your choose: " choose g_job_number
+read -p "your choose: " choose g_job_number g_job_priority
 case "$choose" in
 aj)
     add_job
@@ -414,8 +467,8 @@ sj)
 ej)
 	edit_job_info
 	;;
-up)
-	up_job_priority
+ep)
+	edit_job_priority
 	;;
 cj)
 	complete_job
