@@ -466,6 +466,7 @@ aj)
 	;;
 au)
 	add_update
+	show_job
 	;;
 as)
 	add_summarize
