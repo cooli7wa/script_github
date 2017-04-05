@@ -32,12 +32,10 @@ error()
 
 usage_and_exit()
 {
-	echo "Usage: djob [--verbose][--complete][--date<xxxx>][--help]
-			--date 20170314-20170315 : jobs from 20170314 to 20170315
+	echo "Usage: djob [--date <xd>] [--date <xw>] [--help -h]
 			--date xd : jobs from x days before
 			--date xw : jobs from x week before
-			--all : all jobs
-			--help : show useage
+			--help -h : show useage
 		 "
 	eval "exit $1"
 }
