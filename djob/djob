@@ -310,6 +310,7 @@ add_update()
 	then
 		echo "enter job number"
 		read job_number
+		g_job_number=$job_number
 	else
 		job_number="$g_job_number"
 	fi
