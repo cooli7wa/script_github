@@ -1,0 +1,14 @@
+function compile_color
+{
+    eval "$*" 2>&1 | awk '{
+        IGNORECASE=1;
+        if($0~/error/){
+            print "\033[31m"$0"\033[0m";
+        }
+        else if($0~/warning/){
+            print "\033[33m"$0"\033[0m";
+        }
+        else
+            print;
+    }'
+}
