@@ -1,3 +1,3 @@
 #!/bin/bash -
 # cpwd, copy pwd result to clipboard
-pwd | tee >(xsel -bi)
+pwd | tee >(tr -d '\n'|xsel -bi)
