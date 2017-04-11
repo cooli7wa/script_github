@@ -1,4 +1,4 @@
-function compile_color
+function ccolor
 {
     eval "$*" 2>&1 | awk '{
         IGNORECASE=1;
