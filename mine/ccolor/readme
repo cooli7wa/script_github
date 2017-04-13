@@ -1,0 +1,8 @@
+这个可以alias到make gcc g++等, 但是对于mmm之类的,哪怕添加了alias也无法使用,因为是另起shell执行的,
+已经没有了mmm这个函数,这种情况下,前置ccolor可以解决!
+https://github.com/chinaran/color-compile/
+
+ccolor的缺点是,没法使用alias,会发生嵌套调用,所以只能前置使用.
+.inputrc中增加下面代码,可以使用F3 F4快捷前置ccolor
+"\eOR": beginning-of-line
+"\eOS": "ccolor "
