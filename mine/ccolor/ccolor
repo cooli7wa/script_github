@@ -14,3 +14,11 @@ function ccolor
     }'
     shopt -s expand_aliases
 }
+alias gcc="ccolor gcc"
+alias g++="ccolor g++"
+alias make="ccolor make"
+alias mm="ccolor mm"
+alias mmm="ccolor mmm"
+alias zhmakepkg="ccolor zhmakepkg"
+alias soter_make="ccolor soter_make"
+alias sboot_make="ccolor sboot_make"
