@@ -1,14 +1,16 @@
 function ccolor
 {
+    shopt -u expand_aliases
     eval "$*" 2>&1 | awk '{
         IGNORECASE=1;
-        if($0~/error/){
+        if($0~/ error[s]*[ :]/){
             print "\033[31m"$0"\033[0m";
         }
-        else if($0~/warning/){
+        else if($0~/ warning[s]*[ :]/){
             print "\033[33m"$0"\033[0m";
         }
         else
             print;
     }'
+    shopt -s expand_aliases
 }
