@@ -10,7 +10,7 @@ bk_fold="/home/cooli7wa/Documents/script/script_github/mine/rc_file"
 
 for file in ${bk_files[@]}
 do
-	cp $file $bk_fold/${file/\/./\/}
+	cp $file $bk_fold/`echo $file | grep -o "[^\/]\+$" | tr -d "^."`
 done
 echo -e "\033[032mcp bk_files to $bk_fold, ok\033[0m"
 
