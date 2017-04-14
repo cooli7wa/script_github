@@ -1,0 +1,22 @@
+#!/bin/bash -
+
+bk_files=(
+	~/.bashrc
+	~/.vimrc
+	~/.inputrc
+)
+
+bk_fold="/home/cooli7wa/Documents/script/script_github/mine/rc_file"
+
+for file in ${bk_files[@]}
+do
+	cp $file $bk_fold
+done
+echo "cp bk_files to $bk_fold, ok"
+
+echo "begin to add changes to git"
+cd $bk_fold
+git add ./
+git commit -m "update bk_files"
+git push origin master
+echo "git ok"
