@@ -19,4 +19,6 @@ cd $bk_fold
 git add ./
 git commit -m "update bk_files"
 git push origin master
-echo -e "\033[032mgit ok\033[0m"
+if [ $? -eq 0 ];then
+	echo -e "\033[032mgit ok\033[0m"
+fi
