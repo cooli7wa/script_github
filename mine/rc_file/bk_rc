@@ -10,10 +10,11 @@ bk_fold="/home/cooli7wa/Documents/script/script_github/mine/rc_file"
 
 for file in ${bk_files[@]}
 do
-	cp $file $bk_fold
+	cp $file $bk_fold/${file/\/./\/}
 done
-echo "cp bk_files to $bk_fold, ok"
+echo -e "\033[032mcp bk_files to $bk_fold, ok\033[0m"
 
+return 0
 echo "begin to add changes to git"
 cd $bk_fold
 git add ./
