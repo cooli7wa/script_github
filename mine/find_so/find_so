@@ -2,7 +2,6 @@
 
 SOTER_PATH="/home/cooli7wa/workshop/workshop_new/src/mtk6757_evb/soter"
 PKG_PATH=$SOTER_PATH/src/l4/pkg
-#TARGET_AA=$PKG_PATH/gatekeeper/inner_gatekeeper/Makefile
 TARGET_AA=
 
 show_requires_libs=0
@@ -28,7 +27,7 @@ function find_lib
 		echo -n "	"
 	done
 	cd $PKG_PATH
-	# 查找PC_FILENAME
+	# 查找PC_FILENAME, 所有链接时用的库, 都是依赖这个名字来查找的, 一个PC NAME可能有多个LIBS
 	grep_result=`grep -r "^[^#]*PC_FILENAME.*[ 	]$1[ 	]*$"`
 	# 提取makefile名
 	lib_makefile=`echo "$grep_result" | grep -oP "^.*(?=:[ 	]*PC_FILENAME)"`
@@ -41,16 +40,16 @@ function find_lib
 		# 如果已经找到PKG，那么绿色打印LIB名
 		echo -ne "\033[32m$1\033[0m"
 		# 提取PC对应的LIBS
-		local include_libs=(`grep "^[^#]*TARGET" $lib_makefile | sed "s/^.*TARGET.*=[ \t]*//g" | sed "s/\.so//g;s/.a//g;s/[ \t]/\n/g" | sort -u | sed "s/\n/ /g"`)
-		if [ -z $include_libs ];then
+		local target_libs=(`grep "^[^#]*TARGET" $lib_makefile | sed "s/^.*TARGET.*=[ \t]*//g" | sed "s/\.so//g;s/.a//g;s/[ \t]/\n/g" | sort -u | sed "s/\n/ /g"`)
+		if [ -z $target_libs ];then
 			echo ""
 			return 2
 		else
 			if [ $show_target_libs -eq 1 ];then
-				echo -n "  [`echo ${include_libs[@]}`]"
+				echo -n "  [`echo ${target_libs[@]}`]"
 			fi
 		fi
-		# 提取需求Lib列表,有可能有\所以需要特殊处理
+		# 提取需求Lib列表,有可能有\所以需要特殊处理.awk先将\的处理为一行,grep和sed用来将不需要的部分去掉
 		local lib_requires_libs=($(awk 'function trim(){if(c){gsub("^[ \t]*|[ \t]*$","");$0=" "$0}}{if(sub("[ \t]*\\\\[ \t]*$","")){trim();s=s $0;c=1}else{trim();print s$0;s=c=""}}' $lib_makefile | grep "^[^#]*REQUIRES_LIBS" | sed "s/^.*REQUIRES_LIBS.*=[ \t]*//g;s/#.*//g"))
 #		echo ${lib_requires_libs[@]}
 		if [ -z $lib_requires_libs ];then
