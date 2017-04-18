@@ -1,8 +1,9 @@
 #!/bin/bash -
 
-SOTER_PATH="/home/cooli7wa/workshop/workshop_new/src/mtk6757_evb/soter"
-PKG_PATH=$SOTER_PATH/src/l4/pkg
+PKG_PATH=
 TARGET_AA=
+CURRENT_PATH=$PWD
+RESULT_FILE="result.find_so"
 
 show_requires_libs=0
 show_target_libs=0
@@ -85,16 +86,18 @@ function find_lib
 			echo -n "  {`echo $lib_makefile`}"
 		fi
 		# 提取PC对应的LIBS,需要处理\
-		local target_libs=($(awk 'function trim(){if(c){gsub("^[ \t]*|[ \t]*$","");$0=" "$0}}{if(sub("[ \t]*\\\\[ \t]*$","")){trim();s=s $0;c=1}else{trim();print s$0;s=c=""}}' $lib_makefile | grep "^[^#]*TARGET" | sed "s/^.*TARGET.*=[ \t]*//g" | sed "s/\.so//g;s/.a//g;s/[ \t]/\n/g" | sort -u | sed "s/\n/ /g"))
+		local target_libs=($(awk 'function trim(){if(c){gsub("^[ \t]*|[ \t]*$","");$0=" "$0}}{if(sub("[ \t]*\\\\[ \t]*$","")){trim();s=s $0;c=1}else{trim();print s$0;s=c=""}}' $lib_makefile | grep "^[^#]*TARGET" | sed "s/^.*TARGET.*=[ \t]*//g" | sed "s/\.so//g;s/\.a//g;s/[ \t]/\n/g" | sort -u | sed "s/\n/ /g"))
 		if [ -z "$target_libs" ];then
 			echo ""
 			return 2
 		else
-			echo $lib_makefile >> result_find_so
+			cd $CURRENT_PATH
+#			echo $lib_makefile >> $RESULT_FILE
 			for (( i=0; i<${#target_libs[@]}; i++ ))
 			do
-				echo ${target_libs[$i]} >> result_find_so
+				echo ${target_libs[$i]} >> $RESULT_FILE
 			done
+			cd $PKG_PATH
 			if [ "$show_target_libs" -eq 1 ];then
 				echo -n "  [`echo ${target_libs[@]}`]"
 			fi
@@ -149,9 +152,14 @@ shift $((OPTIND - 1))
 
 if [ $# -eq 1 ];then
 	TARGET_AA=$1
+	PKG_PATH=`echo $PWD | sed -r "s/(.*)pkg.*/\1pkg/g"`
 else
 	echo  arg error
 	exit 1
+fi
+
+if [ -e $RESULT_FILE ];then
+	rm $RESULT_FILE
 fi
 
 # 位于第一层循环中的lib
