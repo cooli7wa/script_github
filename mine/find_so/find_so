@@ -6,6 +6,7 @@ TARGET_AA=
 
 show_requires_libs=0
 show_target_libs=0
+show_makefile_path=0
 
 layer=1
 # 查找传入的lib所依赖的不在当前lib列表里的libs
@@ -16,10 +17,14 @@ layer=1
 #	      2: not find requires lib
 function find_lib
 {
+#	set -x
 	local grep_result
 	local lib_makefile
 	local i
 	local j
+	local makefiles_tmp
+	local makefile_tmp
+	local fold_tmp
 	local same_lib=0
 	# 用TAB来格式化layer输出
 	for ((i=1; i<$layer; i++))
@@ -27,36 +32,81 @@ function find_lib
 		echo -n "	"
 	done
 	cd $PKG_PATH
-	# 查找PC_FILENAME, 所有链接时用的库, 都是依赖这个名字来查找的, 一个PC NAME可能有多个LIBS
-	grep_result=`grep -r "^[^#]*PC_FILENAME.*[ 	]$1[ 	]*$"`
-	# 提取makefile名
+	# 查找PC_FILENAME.有两种情况,一种是用PC_FILENAME命名,一种是makefile中没有PC_FILENAME,默认是用的是PKG目录名作为PC_FILENAME,一种是alias
+	# 1.根据PC_FILENAME来查找.TODO:这里对于32 64,应该区分,这里是默认取第一个目录
+	grep_result=`grep -r "^[^#]*PC_FILENAME.*[= 	]$1[ 	]" | head -1`
+	if [ -z "$grep_result" ];then
+		grep_result=`grep -r "^[^#]*PC_FILENAME.*[=    ]$1$" | head -1`
+	fi
 	lib_makefile=`echo "$grep_result" | grep -oP "^.*(?=:[ 	]*PC_FILENAME)"`
 #	echo $lib_makefile
-	if [ -z $lib_makefile ];then
+	# 2.如果,上步没有找到,那么根据PKG目录名来查找
+	if [ -z "$lib_makefile" ];then
+		fold_tmp=`find -maxdepth 1 -type d -name $1`
+#		echo $fold_tmp
+		if [ -n "$fold_tmp" ];then
+			cd $fold_tmp
+			makefiles_tmp=(`find -name makefile -o -name Makefile`)
+			if [ -n "$makefiles_tmp" ];then
+				for makefile in ${makefiles_tmp[@]}
+				do
+					if [ -n "`grep "lib.mk" "$makefile"`" ] && \
+					   [ -z "`grep "^[^#]*PC_FILENAME" "$makefile"`" ];then
+						lib_makefile=$fold_tmp/$makefile
+						break 1
+					fi
+				done
+			fi
+			cd $PKG_PATH
+		fi
+	fi
+	# 3.如果还没找到,那么看看alias
+	if [ -z "$lib_makefile" ];then
+		cd $PKG_PATH/../mk/aliases.d
+		lib_makefile=`grep -r $1 | grep -oP "^.*(?=:[  ]*$1)"`
+		if [ -z "$lib_makefile" ];then
+			lib_makefile=""
+		else
+			lib_makefile="../mk/aliases.d/$lib_makefile"
+		fi
+		cd $PKG_PATH
+	fi
+
+#	echo $lib_makefile
+	if [ -z "$lib_makefile" ];then
 		# 如果没找到PKG，那么红色打印LIB名
 		echo -e "\033[31m$1\033[0m"
 		return 1
 	else 
 		# 如果已经找到PKG，那么绿色打印LIB名
 		echo -ne "\033[32m$1\033[0m"
-		# 提取PC对应的LIBS
-		local target_libs=(`grep "^[^#]*TARGET" $lib_makefile | sed "s/^.*TARGET.*=[ \t]*//g" | sed "s/\.so//g;s/.a//g;s/[ \t]/\n/g" | sort -u | sed "s/\n/ /g"`)
-		if [ -z $target_libs ];then
+		# 显示makefile的路径
+		if [ "$show_makefile_path" -eq 1 ];then
+			echo -n "  {`echo $lib_makefile`}"
+		fi
+		# 提取PC对应的LIBS,需要处理\
+		local target_libs=($(awk 'function trim(){if(c){gsub("^[ \t]*|[ \t]*$","");$0=" "$0}}{if(sub("[ \t]*\\\\[ \t]*$","")){trim();s=s $0;c=1}else{trim();print s$0;s=c=""}}' $lib_makefile | grep "^[^#]*TARGET" | sed "s/^.*TARGET.*=[ \t]*//g" | sed "s/\.so//g;s/.a//g;s/[ \t]/\n/g" | sort -u | sed "s/\n/ /g"))
+		if [ -z "$target_libs" ];then
 			echo ""
 			return 2
 		else
-			if [ $show_target_libs -eq 1 ];then
+			echo $lib_makefile >> result_find_so
+			for (( i=0; i<${#target_libs[@]}; i++ ))
+			do
+				echo ${target_libs[$i]} >> result_find_so
+			done
+			if [ "$show_target_libs" -eq 1 ];then
 				echo -n "  [`echo ${target_libs[@]}`]"
 			fi
 		fi
 		# 提取需求Lib列表,有可能有\所以需要特殊处理.awk先将\的处理为一行,grep和sed用来将不需要的部分去掉
 		local lib_requires_libs=($(awk 'function trim(){if(c){gsub("^[ \t]*|[ \t]*$","");$0=" "$0}}{if(sub("[ \t]*\\\\[ \t]*$","")){trim();s=s $0;c=1}else{trim();print s$0;s=c=""}}' $lib_makefile | grep "^[^#]*REQUIRES_LIBS" | sed "s/^.*REQUIRES_LIBS.*=[ \t]*//g;s/#.*//g"))
 #		echo ${lib_requires_libs[@]}
-		if [ -z $lib_requires_libs ];then
+		if [ -z "$lib_requires_libs" ];then
 			echo ""
 			return 3
 		else
-			if [ $show_requires_libs -eq 1 ];then
+			if [ "$show_requires_libs" -eq 1 ];then
 				echo "  (`echo ${lib_requires_libs[@]}`)"
 			else
 				echo ""
@@ -66,12 +116,12 @@ function find_lib
 				for ((j=0; j<${#total_requires_libs[@]}; j++))
 				do
 #					echo ${lib_requires_libs[$i]} ${total_requires_libs[$j]}
-					if [ z${lib_requires_libs[$i]} == z${total_requires_libs[$j]} ];then
+					if [ "z${lib_requires_libs[$i]}" == "z${total_requires_libs[$j]}" ];then
 						same_lib=1
 						break 1
 					fi
 				done
-				if [ $same_lib -ne 1 ];then
+				if [ "$same_lib" -ne 1 ];then
 					total_requires_libs[$((j))]=${lib_requires_libs[$i]}
 #					echo ${total_requires_libs[@]}
 					((layer++))
@@ -87,13 +137,12 @@ function find_lib
 
 # 处理传入的参数
 OPTIND=0
-while getopts :rta opt
+while getopts :rtm opt
 do
 	case $opt in
 	r) show_requires_libs=1;;
 	t) show_target_libs=1;;
-	a) show_requires_libs=1
-	   show_target_libs=1;;
+	m) show_makefile_path=1;;
 	esac
 done
 shift $((OPTIND - 1))
