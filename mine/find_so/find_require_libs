@@ -1,15 +1,29 @@
+# 列出某个模块编译依赖的所有库文件的层次关系
+# 并可以显示出依赖的库的位置
+# Author: Rickey Liu
 #!/bin/bash -
 
 PKG_PATH=
 TARGET_AA=
 CURRENT_PATH=$PWD
-RESULT_FILE="result.find_so"
+RESULT_FILE="result.find_require_libs"
 
 show_requires_libs=0
 show_target_libs=0
 show_makefile_path=0
 
 layer=1
+
+usage_and_exit()
+{
+echo "Usage: find_require_libs [-r/t/m] <Makefile>
+ -r: show all require libs
+ -t: show target libs related to PC_FILENAME
+ -m: show lib's makefile path
+"
+exit 1
+}
+
 # 查找传入的lib所依赖的不在当前lib列表里的libs
 # @param 1: lib
 # @return 0: normal
@@ -140,12 +154,15 @@ function find_lib
 
 # 处理传入的参数
 OPTIND=0
-while getopts :rtm opt
+while getopts :rtmh opt
 do
 	case $opt in
 	r) show_requires_libs=1;;
 	t) show_target_libs=1;;
 	m) show_makefile_path=1;;
+	h) usage_and_exit;;
+	*) echo "Invalid option"
+	   usage_and_exit;;
 	esac
 done
 shift $((OPTIND - 1))
@@ -154,8 +171,7 @@ if [ $# -eq 1 ];then
 	TARGET_AA=$1
 	PKG_PATH=`echo $PWD | sed -r "s/(.*)pkg.*/\1pkg/g"`
 else
-	echo  arg error
-	exit 1
+	usage_and_exit
 fi
 
 if [ -e $RESULT_FILE ];then
@@ -172,3 +188,5 @@ for lib in ${makefile_requires_libs[@]}
 do
 	find_lib $lib
 done
+
+exit 0
