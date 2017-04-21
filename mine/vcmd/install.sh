@@ -1,34 +1,19 @@
 #!/bin/bash -
+NAME="vcmd"
 to_file="$HOME/.bashrc"
-from_file="./ccolor"
+from_file="./$NAME"
 bak_file="$HOME/.bashrc.bak.`date +\%Y_\%m_\%d_\%H_\%M_\%S`"
-tmp_file="./ding_install_bashrc.tmp"
-tmp_file1="./ding_install_bashrc.tmp1"
+tmp_file="./"$NAME"_install_bashrc.tmp"
+tmp_file1="./"$NAME"_install_bashrc.tmp1"
 func_list=(
-    "ccolor"
-)
-alias_list=(
-	"gcc"
-	"g++"
-	"make"
-	"mmm"
-	"mm"
-	"zhmakepkg"
-	"soter_make"
-	"sboot_make"
+    "$NAME"
 )
 echo "install: $from_file"
 cp $to_file $bak_file
 cp $to_file $tmp_file
 
 #==== del complete ====
-sed -i "/complete -c ccolor/d" $tmp_file
-
-#==== del old alias ====
-for ali in ${alias_list[@]}
-do
-	sed -i "/alias $ali/d" $tmp_file
-done
+sed -i "/complete -c $NAME/d" $tmp_file
 
 #==== del old funcs ====
 function del_func

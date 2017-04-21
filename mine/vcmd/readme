@@ -1,0 +1,2 @@
+查找命令.如果命令是shell脚本,那么vim打开脚本;如果是alias,那么打印alias信息;如果是function,
+那么打印function代码

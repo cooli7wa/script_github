@@ -1,3 +1,4 @@
+complete -c vcmd
 function vcmd
 {
     local result=`which $1`
@@ -7,4 +8,3 @@ function vcmd
         type $1
     fi
 }
-

@@ -1,3 +1,4 @@
+complete -v ccolor
 function ccolor
 {
     shopt -u expand_aliases
