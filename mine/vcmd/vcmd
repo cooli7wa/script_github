@@ -1,0 +1,10 @@
+function vcmd
+{
+    local result=`which $1`
+    if [ -n "$result" ];then
+        vim `echo $result | cut -d ' ' -f 3`
+    else
+        type $1
+    fi
+}
+
