@@ -20,6 +20,7 @@ echo "Usage: find_require_libs [-r/t/m] <Makefile>
  -r: show all require libs
  -t: show target libs related to PC_FILENAME
  -m: show lib's makefile path
+ -a: show all
 "
 exit 1
 }
@@ -99,8 +100,8 @@ function find_lib
 		if [ "$show_makefile_path" -eq 1 ];then
 			echo -n "  {`echo $lib_makefile`}"
 		fi
-		# 提取PC对应的LIBS,需要处理\
-		local target_libs=($(awk 'function trim(){if(c){gsub("^[ \t]*|[ \t]*$","");$0=" "$0}}{if(sub("[ \t]*\\\\[ \t]*$","")){trim();s=s $0;c=1}else{trim();print s$0;s=c=""}}' $lib_makefile | grep "^[^#]*TARGET" | sed "s/^.*TARGET.*=[ \t]*//g" | sed "s/\.so//g;s/\.a//g;s/[ \t]/\n/g" | sort -u | sed "s/\n/ /g"))
+		# 提取PC对应的LIBS,需要处理
+		local target_libs=($(sed -e :a -e '/\\[ \t]*$/N; s/\\[ \t]*\n/ /; ta; s/[ \t]\+/ /g' $lib_makefile | grep "^[^#]*TARGET" | sed "s/^.*TARGET.*=[ \t]*//g; s/\.so//g; s/\.a//g;s/[ \t]/\n/g" | sort -u | sed "s/\n/ /g"))
 		if [ -z "$target_libs" ];then
 			echo ""
 			return 2
@@ -117,7 +118,7 @@ function find_lib
 			fi
 		fi
 		# 提取需求Lib列表,有可能有\所以需要特殊处理.awk先将\的处理为一行,grep和sed用来将不需要的部分去掉
-		local lib_requires_libs=($(awk 'function trim(){if(c){gsub("^[ \t]*|[ \t]*$","");$0=" "$0}}{if(sub("[ \t]*\\\\[ \t]*$","")){trim();s=s $0;c=1}else{trim();print s$0;s=c=""}}' $lib_makefile | grep "^[^#]*REQUIRES_LIBS" | sed "s/^.*REQUIRES_LIBS.*=[ \t]*//g;s/#.*//g"))
+		local lib_requires_libs=($(sed -e :a -e '/\\[ \t]*$/N; s/\\[ \t]*\n/ /; ta; s/[ \t]\+/ /g' $lib_makefile | grep "^[^#]*REQUIRES_LIBS" | sed "s/^.*REQUIRES_LIBS.*=[ \t]*//g;s/#.*//g"))
 #		echo ${lib_requires_libs[@]}
 		if [ -z "$lib_requires_libs" ];then
 			echo ""
@@ -154,12 +155,15 @@ function find_lib
 
 # 处理传入的参数
 OPTIND=0
-while getopts :rtmh opt
+while getopts :rtmha opt
 do
 	case $opt in
 	r) show_requires_libs=1;;
 	t) show_target_libs=1;;
 	m) show_makefile_path=1;;
+	a) show_requires_libs=1
+	   show_target_libs=1
+	   show_makefile_path=1;;
 	h) usage_and_exit;;
 	*) echo "Invalid option"
 	   usage_and_exit;;
