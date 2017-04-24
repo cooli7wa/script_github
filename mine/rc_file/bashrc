@@ -337,6 +337,7 @@ function 2ding
     fi
 }
 
+complete -v ccolor
 function ccolor
 {
     shopt -u expand_aliases
@@ -361,3 +362,14 @@ alias mmm="ccolor mmm"
 alias zhmakepkg="ccolor zhmakepkg"
 alias soter_make="ccolor soter_make"
 alias sboot_make="ccolor sboot_make"
+
+complete -c vcmd
+function vcmd
+{
+    local result=`which $1`
+    if [ -n "$result" ];then
+        vim `echo $result | cut -d ' ' -f 3`
+    else
+        type $1
+    fi
+}
