@@ -337,7 +337,7 @@ function 2ding
     fi
 }
 
-complete -v ccolor
+complete -c ccolor
 function ccolor
 {
     shopt -u expand_aliases
