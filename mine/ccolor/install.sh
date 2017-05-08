@@ -2,8 +2,8 @@
 to_file="$HOME/.bashrc"
 from_file="./ccolor"
 bak_file="$HOME/.bashrc.bak.`date +\%Y_\%m_\%d_\%H_\%M_\%S`"
-tmp_file="./ding_install_bashrc.tmp"
-tmp_file1="./ding_install_bashrc.tmp1"
+tmp_file="./ccolor_install_bashrc.tmp"
+tmp_file1="./ccolor_install_bashrc.tmp1"
 func_list=(
     "ccolor"
 )

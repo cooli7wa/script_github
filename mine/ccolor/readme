@@ -1,16 +1,8 @@
-ccolor现在没有缺点了,可以使用alias,不会发生嵌套.
-.inputrc中增加下面代码,可以使用F3 F4快捷前置ccolor
-"\eOR": beginning-of-line
-"\eOS": "ccolor "
-.bashrc中:
-alias gcc="ccolor gcc"
-alias g++="ccolor g++"
-alias make="ccolor make"
-alias zhmakepkg="ccolor zhmakepkg"
-alias soter_make="ccolor soter_make"
-alias sboot_make="ccolor sboot_make"
-
-下面这个可以不用了:
-这个可以alias到make gcc g++等, 但是对于mmm,mm,zhmakepkg之类的,哪怕添加了alias也无法使用,因为是另起shell执行的,已经没有了mmm这个函数.
-https://github.com/chinaran/color-compile/
-
+功能: colorful 用来将编译输出色彩化,方便查找出错代码
+作者: Rickey Liu
+说明: 
+1.alias可以根据需求增加
+2.需要色彩化的文字,也可以根据需求定制,更改arr1即可
+更新:
+1. ccolor现在可以使用alias,不会发生嵌套.
+2. 规范化输出代码,方便添加,增加高亮显示.
