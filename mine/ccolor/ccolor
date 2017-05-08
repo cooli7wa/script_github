@@ -17,21 +17,23 @@ function ccolor
     {
         IGNORECASE=1;
         for(i=1;i<=n;i=i+2){
-             if(pos=match($0,"[ :]"arr3[i]"[s]*[ :]")){
+             if(match($0,arr3[i]"[s]*")){
                  len_s=length(arr3[i]);
                  len=length($0);
+                 pos=RSTART;
                  pos1=pos+len_s;
-                 b=substr($0, 1, pos);
-                 a=substr($0, pos1+1, len-pos1+1);
+                 b=substr($0, 1, pos-1);
+                 m=substr($0, pos, RLENGTH);
+                 a=substr($0, pos1, len-pos1+1);
                  switch(arr3[i+1]){
                      case /YELLOW/:
-                         print "'"$YELLOW"'"b"'"$YELLOW1"'"arr3[i]"'"$YELLOW"'"a"'"$END"'";
+                         print "'"$YELLOW"'"b"'"$YELLOW1"'"m"'"$YELLOW"'"a"'"$END"'";
                          break;
                      case /RED/:
-                         print "'"$RED"'"b"'"$RED1"'"arr3[i]"'"$RED"'"a"'"$END"'";
+                         print "'"$RED"'"b"'"$RED1"'"m"'"$RED"'"a"'"$END"'";
                          break;
                      case /BLUE/:
-                         print "'"$BLUE"'"b"'"$BLUE1"'"arr3[i]"'"$BLUE"'"a"'"$END"'";
+                         print "'"$BLUE"'"b"'"$BLUE1"'"m"'"$BLUE"'"a"'"$END"'";
                          break;
                      default:
                          print "Color setting wrong! Please check ~/.bashrc ccolor func"
