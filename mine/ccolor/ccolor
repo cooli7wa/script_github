@@ -11,16 +11,19 @@ function ccolor
     local BLUE1="\033[1;34m"
     local END="\033[0m"
 
-    shopt -u expand_aliases
+    shopt -u expand_aliases 
     eval "$*" 2>&1 | awk -v arr2="${arr1[*]}" '
     BEGIN{n=split(arr2,arr3," ");normal_print=1}
     {
         IGNORECASE=1;
         for(i=1;i<=n;i=i+2){
-             if(match($0,arr3[i]"[s]*")){
-                 len_s=length(arr3[i]);
-                 len=length($0);
+             if((match($0,"[ \t:]+"arr3[i]"[s]*[ \t:]+"))||
+                (match($0,"^"arr3[i]"[s]*[ \t:]+"))||
+                (match($0,"[ \t:]+"arr3[i]"[s]*$"))||
+                (match($0,"^"arr3[i]"[s]*$"))){
+                 len_s=RLENGTH;
                  pos=RSTART;
+                 len=length($0);
                  pos1=pos+len_s;
                  b=substr($0, 1, pos-1);
                  m=substr($0, pos, RLENGTH);
@@ -57,4 +60,3 @@ alias mmm="ccolor mmm"
 alias zhmakepkg="ccolor zhmakepkg"
 alias soter_make="ccolor soter_make"
 alias sboot_make="ccolor sboot_make"
-
