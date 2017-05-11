@@ -24,17 +24,12 @@ let Tlist_Use_Right_Window=1 "在Vim窗口右侧显示taglist窗口
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " cscope setting
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-if has("cscope")
+"set nocst   "只查找cscope文件
+set cst    "始终同时查找cscope和tags文件
+set csto=0  "cscope的数据优先查找
 set csprg=/usr/bin/cscope
-set csto=1
-set cst
-set nocsverb
-" add any database in current directory
-if filereadable("cscope.out")
-cs add cscope.out
-endif
-set csverb
-endif
+set cspc=6 "cscope的查找结果在格式上最多显示6层目录.
+let g:autocscope_menus=0 "关闭autocscope插件的快捷健映射.防止和我们定义的快捷键冲突.
 
 nmap <C-@>s :cs find s <C-R>=expand("<cword>")<CR><CR>
 nmap <C-@>g :cs find g <C-R>=expand("<cword>")<CR><CR>
@@ -45,5 +40,7 @@ nmap <C-@>f :cs find f <C-R>=expand("<cfile>")<CR><CR>
 nmap <C-@>i :cs find i ^<C-R>=expand("<cfile>")<CR>$<CR>
 nmap <C-@>d :cs find d <C-R>=expand("<cword>")<CR><CR>
 
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" 粘贴去掉缩进
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 set pastetoggle=<F9>

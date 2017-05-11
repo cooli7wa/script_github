@@ -1,6 +1,7 @@
 "\eOR": beginning-of-line
 "\eOS": "ccolor "
 "\e[15~": "adb root  &&  adb shell setprop persist.uartconsole.enable 1"
+"\e[17~": "git push origin HEAD:refs/for/trunk"
 "\e[A": history-search-backward
 "\e[B": history-search-forward
 set show-all-if-ambiguous on

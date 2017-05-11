@@ -337,31 +337,6 @@ function 2ding
     fi
 }
 
-complete -c ccolor
-function ccolor
-{
-    shopt -u expand_aliases
-    eval "$*" 2>&1 | awk '{
-        IGNORECASE=1;
-        if($0~/ error[s]*[ :]/){
-            print "\033[31m"$0"\033[0m";
-        }
-        else if($0~/ warning[s]*[ :]/){
-            print "\033[33m"$0"\033[0m";
-        }
-        else
-            print;
-    }'
-    shopt -s expand_aliases
-}
-alias gcc="ccolor gcc"
-alias g++="ccolor g++"
-alias make="ccolor make"
-alias mm="ccolor mm"
-alias mmm="ccolor mmm"
-alias zhmakepkg="ccolor zhmakepkg"
-alias soter_make="ccolor soter_make"
-alias sboot_make="ccolor sboot_make"
 
 complete -c vcmd
 function vcmd
@@ -373,3 +348,66 @@ function vcmd
         type $1
     fi
 }
+
+complete -c ccolor
+function ccolor
+{
+	local arr1=(warning YELLOW error RED failed RED fail RED note BLUE \
+				警告 YELLOW 错误 RED 附注 BLUE)
+	local RED="\033[0;31m"
+	local RED1="\033[1;031m"
+	local YELLOW="\033[0;33m"
+	local YELLOW1="\033[1;33m"
+	local BLUE="\033[0;34m"
+	local BLUE1="\033[1;34m"
+	local END="\033[0m"
+    
+	shopt -u expand_aliases
+    eval "$*" 2>&1 | awk -v arr2="${arr1[*]}" '
+	BEGIN{n=split(arr2,arr3," ");normal_print=1}
+	{
+        IGNORECASE=1;
+		for(i=1;i<=n;i=i+2){
+       		 if((match($0,"[ \t:]+"arr3[i]"[s]*[ \t:]+"))||
+			    (match($0,"^"arr3[i]"[s]*[ \t:]+"))||
+				(match($0,"[ \t:]+"arr3[i]"[s]*$"))||
+				(match($0,"^"arr3[i]"[s]*$"))){
+       		     len_s=RLENGTH;
+				 pos=RSTART;
+       		     len=length($0);
+       		     pos1=pos+len_s;
+       		     b=substr($0, 1, pos-1);
+				 m=substr($0, pos, RLENGTH);
+       		     a=substr($0, pos1, len-pos1+1);
+       		     switch(arr3[i+1]){
+       		         case /YELLOW/:
+       		             print "'"$YELLOW"'"b"'"$YELLOW1"'"m"'"$YELLOW"'"a"'"$END"'";
+       		             break;
+       		         case /RED/:
+       		             print "'"$RED"'"b"'"$RED1"'"m"'"$RED"'"a"'"$END"'";
+       		             break;
+       		         case /BLUE/:
+       		             print "'"$BLUE"'"b"'"$BLUE1"'"m"'"$BLUE"'"a"'"$END"'";
+       		             break;
+       		         default:
+       		             print "Color setting wrong! Please check ~/.bashrc ccolor func"
+       		     }
+       		     normal_print=0;
+       		     break;
+       		 }
+    	}
+   		if(normal_print)
+        	print;
+    	else
+        	normal_print=1;
+	}'
+    shopt -s expand_aliases
+}
+alias gcc="ccolor gcc"
+alias g++="ccolor g++"
+alias make="ccolor make"
+alias mm="ccolor mm"
+alias mmm="ccolor mmm"
+alias zhmakepkg="ccolor zhmakepkg"
+alias soter_make="ccolor soter_make"
+alias sboot_make="ccolor sboot_make"
