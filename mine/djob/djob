@@ -81,7 +81,7 @@ show_job_update()
 				}
 				if (eprint) {
 					if (color) {
-						system("echo \033[31m"$0"\033[0m");
+						system("echo \033[31m\""$0"\"\033[0m");
 					} else {
 						print;
 					}

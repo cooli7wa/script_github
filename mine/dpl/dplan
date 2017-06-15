@@ -1,0 +1,136 @@
+#!/bin/bash -
+IFS="
+	 "
+PATH=/usr/local/bin:/bin:/usr/bin
+export PATH
+
+dpl_path="$HOME""/dpl_file/"
+today=`date +\%Y\%m\%d`
+today_file=$dpl_path"/"$today.dpl
+
+msg=''
+
+error_and_exit()
+{
+	echo "Param error"
+	exit 1
+}
+
+show_daily_plan()
+{
+	if [ ! -e $dpl_path ]
+	then
+		mkdir $dpl_path
+		echo "No plan"
+		return -1
+	fi
+	if [[ -e $today_file && -s $today_file ]]
+	then
+		awk -F ':' '
+		{
+			if($3~/OK/){
+				system("echo \033[32m"$1"	"$2"\033[0m");
+			}else{
+				system("echo \""$1"\"	\""$2"\"");
+			}
+		}' $today_file
+		return 0
+	else
+		echo "No plan"
+		return -1
+	fi
+}
+
+add_plan()
+{
+	local plan="$1"
+	local current_max_num=0
+	if [[ ! -e $today_file || ! -s $today_file ]]
+	then
+		current_max_num=0
+	else
+		current_max_num="`cat "$today_file" | cut -s -d : -f 1 | sort -nr | head -1`"
+	fi
+	echo $(($current_max_num+1))":""$plan" >> $today_file
+	return 0
+}
+
+complete_plan()
+{
+	local num=$1
+	if [ ! -e $today_file ]
+	then
+		echo "No such plan"
+		return -1
+	fi
+	
+	grep -q "^$num:" $today_file
+	if [ $? == 0 ]
+	then
+		sed -i "/^$num:/s/$/:OK/" $today_file
+		echo "Complete OK"
+		return 0
+	else
+		echo "No such plan"
+		return -1
+	fi
+}
+
+delete_plan()
+{
+	local num=$1
+	if [ ! -e $today_file ]
+	then
+		echo "No such plan"
+		return -1
+	fi
+	
+	grep -q "^$num:" $today_file
+	if [ $? == 0 ]
+	then
+		sed -i "/^$num:/d" $today_file
+		echo "Delete OK"
+		return 0
+	else
+		echo "No such plan"
+		return -1
+	fi
+}
+
+# begin flow
+show_daily_plan
+read choose msg
+case "$choose" in
+ap)
+	if [ -n "$msg" ]
+	then
+		add_plan "$msg"
+	else
+		error_and_exit
+	fi
+	;;
+cp)
+	if [[ $msg =~ [0-9]+ ]]
+	then
+		complete_plan $msg
+	else
+		error_and_exit
+	fi
+	;;
+dp)
+	if [[ $msg =~ [0-9]+ ]]
+	then
+		delete_plan $msg
+	else
+		error_and_exit
+	fi
+	;;
+*)
+    exit 0
+    ;;
+esac
+if [ $? == 0 ]
+then
+	show_daily_plan
+fi
+exit 0
