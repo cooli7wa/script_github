@@ -52,6 +52,7 @@ add_plan()
 		current_max_num="`cat "$today_file" | cut -s -d : -f 1 | sort -nr | head -1`"
 	fi
 	echo $(($current_max_num+1))":""$plan" >> $today_file
+	echo "--------------------"
 	return 0
 }
 
@@ -69,6 +70,7 @@ complete_plan()
 	then
 		sed -i "/^$num:/s/$/:OK/" $today_file
 		echo "Complete OK"
+		echo "--------------------"
 		return 0
 	else
 		echo "No such plan"
@@ -90,6 +92,7 @@ delete_plan()
 	then
 		sed -i "/^$num:/d" $today_file
 		echo "Delete OK"
+		echo "--------------------"
 		return 0
 	else
 		echo "No such plan"
