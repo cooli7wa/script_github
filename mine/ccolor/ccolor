@@ -3,6 +3,7 @@ function ccolor
 {
     local arr1=(warning YELLOW error RED failed RED fail RED note BLUE \
                 警告 YELLOW 错误 RED 附注 BLUE)
+    local except=("make setup" "")
     local RED="\033[0;31m"
     local RED1="\033[1;031m"
     local YELLOW="\033[0;33m"
@@ -11,7 +12,18 @@ function ccolor
     local BLUE1="\033[1;34m"
     local END="\033[0m"
 
-    shopt -u expand_aliases 
+    shopt -u expand_aliases
+
+	for ((i=0;i<${#except[@]};i++))
+    do
+        if [ z"${except[$i]}" == z"$*" ]
+        then
+            eval "$*"
+            shopt -s expand_aliases
+            return
+        fi
+    done
+
     eval "$*" 2>&1 | awk -v arr2="${arr1[*]}" '
     BEGIN{n=split(arr2,arr3," ");normal_print=1}
     {
