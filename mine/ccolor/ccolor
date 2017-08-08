@@ -1,8 +1,9 @@
 complete -c ccolor
 function ccolor
 {
-    local arr1=(warning YELLOW error RED failed RED fail RED note BLUE \
-                警告 YELLOW 错误 RED 附注 BLUE)
+    local arr1=(warning#YELLOW#error#RED#failed#RED#fail#RED#note#BLUE#\
+                警告#YELLOW#错误#RED#附注#BLUE#\
+				undefined reference#RED)
     local except=("make setup" "")
     local RED="\033[0;31m"
     local RED1="\033[1;031m"
@@ -25,7 +26,7 @@ function ccolor
     done
 
     eval "$*" 2>&1 | awk -v arr2="${arr1[*]}" '
-    BEGIN{n=split(arr2,arr3," ");normal_print=1}
+    BEGIN{n=split(arr2,arr3,"#");normal_print=1}
     {
         IGNORECASE=1;
         for(i=1;i<=n;i=i+2){
