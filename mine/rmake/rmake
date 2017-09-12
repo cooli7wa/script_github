@@ -1,0 +1,34 @@
+complete -F __rmake_cmd_HUB rmake
+function __rmake_cmd
+{
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+    local options="`cd $REPO_ROOT_PATH && make -pRrq : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($1 !~ "^[#.]") {print $1}}' | egrep -v '^[^[:alnum:]]' | sort`"
+    COMPREPLY=( $(compgen -W "${options}" -- ${cur}) )
+}
+function __rmake_cmd_HUB
+{
+    repo info > /dev/null 2>&1
+    if [ $? != 0 ];then
+        echo "not in repo or sub folders"
+        return
+    fi
+    case $COMP_CWORD in
+    0)  ;;
+    1)  if [ ${COMP_WORDS[0]} == rmake ];then
+            eval __rmake_cmd
+        fi
+        ;;
+    esac
+}
+function rmake
+{
+    repo info > /dev/null 2>&1
+    if [ $? != 0 ];then
+        echo "not in repo or sub folders"
+        return
+    fi
+    export REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+    (cd $REPO_ROOT_PATH && eval make $*)
+}
+
