@@ -1,0 +1,68 @@
+complete -F __goto_cmd_HUB goto
+function __goto_cmd
+{
+    local special_subfolders=("ree")
+    local regexp="find -maxdepth 1 -type d | sed '/^\.$\|^\.\/\.\.*/d' | sed 's/\.\///g'"
+
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+    local top_folders="`cd $REPO_ROOT_PATH && eval $regexp`"
+    local sub_folders=""
+    for sub_folder in ${special_subfolders[@]}
+    do
+        sub_folders="$sub_folders""`cd $REPO_ROOT_PATH/$sub_folder && eval "$regexp | sed 's/^/$sub_folder\//g'"`"
+    done
+    local options=$top_folders$sub_folders
+    COMPREPLY=( $(compgen -W "${options}" -- ${cur}) )
+}
+function __goto_cmd_HUB
+{
+    repo info > /dev/null 2>&1
+    if [ $? != 0 ];then
+        echo "not in repo or sub folders"
+        return
+    fi
+    case $COMP_CWORD in
+    0)  ;;
+    1)  if [ ${COMP_WORDS[0]} == goto ];then
+            eval __goto_cmd
+        fi
+        ;;
+    esac
+}
+function goto
+{
+    OPTIND=0
+    while getopts :h opt
+    do
+        case $opt in
+            h)  echo "Usage: goto [-h] [FOLDER_IN_REPO]"
+                echo "       @FOLDER_IN_REPO: top folders in repo root path or special sub folders"
+                echo "       @-h : show usage"
+                echo ""
+                echo "       You can jump to the fold interested by using goto"
+                echo "       You can use this command in repo root folder or sub folders directly"
+                echo "       And goto can auto completion"
+                return
+                ;;
+            ?)  echo "Invalid option, use -h to see usage"
+                return
+                ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+
+    repo info > /dev/null 2>&1
+    if [ $? != 0 ];then
+        echo "not in repo or sub folders"
+        return
+    fi
+    local REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+
+    if [ $# -eq 0 ];then
+        cd $REPO_ROOT_PATH
+    else
+        cd $REPO_ROOT_PATH/$*
+    fi
+}
+
