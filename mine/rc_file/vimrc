@@ -11,7 +11,7 @@ syntax on
 
 "将tab扩展成空格
 "set expandtab
-"set noexpandtab
+set noexpandtab
 
 "
 " taglist
