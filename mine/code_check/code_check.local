@@ -1,0 +1,47 @@
+#!/bin/bash -
+git status > /dev/null 2>&1
+if [ $? != 0 ]; then
+echo "not in git path"
+exit 1
+fi
+
+# TODO: should add all files in local commits diff from remote
+commit_files=`git show --diff-filter=ACMR --name-only --no-commit-id`
+#not_commit_files=`git diff --diff-filter=ACMR --name-only --no-commit-id`
+change_files=`echo -e "$commit_files\n$not_commit_files"`
+
+if [ -z "$change_files" ]; then
+echo "no change files"
+exit 1
+fi
+
+trailing_files=`grep '[[:blank:]]$' $change_files -rlIn`
+if [ $? == 0 ]; then
+sed -i "s/[[:blank:]]*$//g" $trailing_files
+fi
+echo -e "\033[32mcheck and fix trailing-space finished\033[0m"
+
+if [ ! -e .clang-format ]; then
+cp ~/.clang-format ./
+should_del=True
+fi
+
+clang_files=`echo "$change_files" | egrep "\.c$|\.cpp$|\.cc$|\.h$"`
+if [ $? == 0 ]; then
+clang-format -i $clang_files
+fi
+echo -e "\033[32mclang-format finished\033[0m"
+
+if [ "z$should_del" == "zTrue" ]; then
+rm .clang-format
+fi
+
+cppcheck_files=`echo "$change_files" | egrep "\.c$|\.cpp$|\.cc$"`
+if [ $? == 0 ]; then
+echo "=========== cppcheck begin =============="
+cppcheck --force --enable=warning --inline-suppr -q $cppcheck_files
+echo "=========== cppcheck end =============="
+fi
+echo -e "\033[32mcppcheck finished\033[0m"
+
+# TODO: add checkpatch

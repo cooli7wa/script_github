@@ -1,0 +1,168 @@
+#!/bin/bash -
+
+CODE_CHECK_PATH=.git/hooks/code_check
+SCRIPT_PATH=$CODE_CHECK_PATH/scripts
+PROJECT=`repo info . | grep -oP 'Project: \K.*'`
+
+# extract cached files name
+cache_files=`git diff --cached --name-only --diff-filter=AMRC`
+if [ -z "$cache_files" ]; then
+	echo "no cache files"
+	exit 1
+fi
+
+# use in clang cppcheck checkpatch
+code_files=`echo "$cache_files" | egrep "\.c$|\.cpp$|\.cc$|\.cxx$|\.h$"`
+
+find_matched_files()
+{
+	matched_files=""
+	if [ -z "$2" ]; then
+		return
+	fi
+	for file in $1; do
+		echo $PROJECT/$file | egrep -q "$2"
+		if [ $? == 0 ]; then
+			matched_files+=$file" "
+		fi
+	done
+}
+
+# parse path config file
+parse_config()
+{
+	local CONFIG_LABELS=`sed -nr 's/^#@(.*)@.*$/\1/p' $CODE_CHECK_PATH/config`
+	local line=""
+	local cmd_part=""
+	local cmd=""
+	local path=""
+	local var=""
+
+	for line in `sed -n '/^#/D;p' $CODE_CHECK_PATH/config`; do
+		cmd_part=${line#*:}
+		for cmd in $CONFIG_LABELS; do
+			echo $cmd_part | grep -q $cmd
+			if [ $? == 0 ]; then
+				path=${line%:*}
+				var=${cmd}_path
+				if [ -z "${!var}" ]; then
+					eval ${cmd}_path=$path
+				else
+					eval ${cmd}_path+=\""|$path"\"
+				fi
+			fi
+		done
+	done
+#	for cmd in $CONFIG_LABELS; do
+#		echo ==== ${cmd}_path ====
+#		eval echo \$${cmd}_path
+#	done
+}
+parse_config
+
+# ============= CHECK BEGIN ===============
+
+# trailing space
+# check files except binary file
+trailing_files=`grep '[[:blank:]]$' $cache_files -rlIn`
+if [ $? == 0 ]; then
+	sed -i "s/[[:blank:]]*$//g" $trailing_files
+	echo -e "\033[32mtrailing-space fix finished\033[0m"
+fi
+git add $cache_files
+
+# clang-format
+if [[ -n "$code_files" ]]; then
+	for tmp_var in ${!CLANG@}; do
+		tmp_var=$tmp_var
+		if [ -n "${!tmp_var}" ]; then
+			find_matched_files "$code_files" "${!tmp_var}"
+			if [ -n "$matched_files" ]; then
+				if [ ! -e .clang-format ]; then
+					cp $CODE_CHECK_PATH/clang-format.$tmp_var .clang-format
+					$SCRIPT_PATH/clang-format -i $matched_files
+					rm .clang-format
+				else
+					$SCRIPT_PATH/clang-format -i $matched_files
+				fi
+				echo -e "\033[32mclang-format for $tmp_var finished\033[0m"
+			fi
+		fi
+	done
+fi
+git add $cache_files
+
+# cppcheck
+if [[ -n "$code_files" && -n "$CPPCHECK_path" ]]; then
+	find_matched_files "$code_files" "$CPPCHECK_path"
+	if [ -n "$matched_files" ]; then
+		$SCRIPT_PATH/cppcheck --force --enable=warning --inline-suppr -q --error-exitcode=1 $matched_files
+		if [ $? != 0 ]; then
+			echo -e "\033[031mcppcheck failed, please fix first\033[0m"
+			exit 1
+		fi
+		echo -e "\033[32mcppcheck success\033[0m"
+	fi
+fi
+git add $cache_files
+
+# checkpatch 
+if [[ -n "$code_files" ]]; then
+	if [ -n "$CHECKPATCH_KERNEL_path" ]; then
+		find_matched_files "$code_files" "$CHECKPATCH_KERNEL_path"
+		if [ -n "$matched_files" ]; then
+			$SCRIPT_PATH/checkpatch.pl --terse --show-types \
+				                       --max-line-length=80 \
+						               --ignore=LINUX_VERSION_CODE \
+									   --no-tree \
+									   -f $matched_files
+			result1=$?
+			$SCRIPT_PATH/checkpatch.pl --terse --show-types \
+				                       --max-line-length=80 \
+									   --ignore COMMIT_LOG_LONG_LINE,LINUX_VERSION_CODE \
+									   --no-tree \
+									   -f $matched_files | grep WARNING
+			result2=$?
+			if [[ $result1 -eq 1 || $result2 -eq 0 ]]; then
+				echo -e "\033[031mcheckpatch kernel failed, please fix first\033[0m"
+				exit 1
+			else
+				echo -e "\033[32mcheckpatch kernel success\033[0m"
+			fi
+		fi
+	fi
+	if [ -n "$CHECKPATCH_ATF_path" ]; then
+		find_matched_files "$code_files" "$CHECKPATCH_ATF_path"
+		if [ -n "$matched_files" ]; then
+			$SCRIPT_PATH/checkpatch.pl --terse --show-types \
+									   --max-line-length=120 \
+									   --ignore GERRIT_CHANGE_ID,FILE_PATH_CHANGES,UNDOCUMENTED_DT_STRING \
+									   --no-tree \
+									   -f $matched_files
+			result1=$?
+
+			$SCRIPT_PATH/checkpatch.pl --terse --show-types \
+									   --max-line-length=120 \
+									   --ignore GERRIT_CHANGE_ID,FILE_PATH_CHANGES,UNDOCUMENTED_DT_STRING,COMMIT_LOG_LONG_LINE \
+									   --no-tree -f $matched_files | grep WARNING
+			result2=$?
+
+			git diff --cached $matched_files | \
+			$SCRIPT_PATH/checkpatch.pl --terse --show-types --no-signoff \
+									   --max-line-length=120 \
+									   --ignore GERRIT_CHANGE_ID,FILE_PATH_CHANGES,UNDOCUMENTED_DT_STRING \
+									   --no-tree -
+			result3=$?
+
+			if [[ $result1 -eq 1 || $result2 -eq 0 || $result3 -eq 1 ]]; then
+				echo -e "\033[031mcheckpatch atf failed, please fix first\033[0m"
+				exit 1
+			else
+				echo -e "\033[32mcheckpatch atf success\033[0m"
+			fi
+		fi
+	fi
+fi
+git add $cache_files
+
+# ============= CHECK END ===============

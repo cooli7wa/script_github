@@ -1,0 +1,15 @@
+#@CPPCHECK@
+#@CHECKPATCH_KERNEL@
+#@CHECKPATCH_ATF@
+#@CLANG_NORMAL@: IndentWidth: 4, UseTab: Never
+#@CLANG_KERNEL@: IndentWidth: 8, UseTab: Always
+ost/ree/kernel:CPPCHECK|CHECKPATCH_KERNEL
+ost/ree/alps_.*/kernel:CPPCHECK|CHECKPATCH_KERNEL
+ost/ree/alps_.*/vendor/mediatek/proprietary/trustzone/atf:CPPCHECK|CHECKPATCH_ATF
+ost/ree/alps_.*/vendor/mediatek/proprietary/bootable/bootloader/preloader:CPPCHECK
+ost/ree/gatekeeper:CPPCHECK|CLANG_NORMAL
+ost/ree/keymaster:CPPCHECK
+ost/ree/fingerprints:CLANG_NORMAL
+ost/ree/teei_daemon:CPPCHECK
+ost/ree/atf:CPPCHECK|CHECKPATCH_ATF
+ost/ree/preloader:CPPCHECK
