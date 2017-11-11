@@ -1,0 +1,132 @@
+#!/bin/bash -
+
+#TODO: should check folder
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+CUSTOM_FOLDER=$REPO_ROOT/customization/
+TMP_FOLDER=$CUSTOM_FOLDER/tmp
+VENDOR_FOLDER=$CUSTOM_FOLDER/vendor
+
+#should choose which to finish, tmp or vendor
+#because finish can be use in start and restore
+vendor_phone_name=""
+tmp_phone_name=""
+if [ -e "$VENDOR_FOLDER/phone_name" ]; then
+	vendor_phone_name=`cat $VENDOR_FOLDER/phone_name`
+fi
+if [ -e "$TMP_FOLDER/phone_name" ]; then
+	tmp_phone_name=`cat $TMP_FOLDER/phone_name`
+fi
+	
+if [[ -n "$tmp_phone_name" && -n "$vendor_phone_name" ]]; then
+	echo "Please choose which to finish:"
+	read -p "1 \"$vendor_phone_name\", 2 \"$tmp_phone_name\": " choose
+	case "$choose" in
+	1) CHOOSE_FOLDER=$VENDOR_FOLDER;;
+	2) CHOOSE_FOLDER=$TMP_FOLDER;;
+	esac
+else
+	if [ -n "$vendor_phone_name" ]; then
+		CHOOSE_FOLDER=$VENDOR_FOLDER
+	else
+		CHOOSE_FOLDER=$TMP_FOLDER
+	fi
+fi
+
+PHONE_NAME=`cat $CHOOSE_FOLDER/phone_name`
+PHONE_NAME_FILE=$CHOOSE_FOLDER/phone_name
+XML_FILE=$CHOOSE_FOLDER/phone_setting.xml
+TARGET_FOLDER=$CUSTOM_FOLDER/vendor/$PHONE_NAME
+PHONE_STABLE_BRANCH=`grep -oP '<default revision="\Kstable_[\d.]+' $XML_FILE`
+
+echo -e "current phone_name is \033[33m$PHONE_NAME\033[0m"
+echo -e "stable branch is \033[33m$PHONE_STABLE_BRANCH\033[0m"
+echo ""
+
+#check uncommit changes
+#TODO: should open this
+#if [ -n "`repo status | grep '^ ..\s'`" ];then
+#	echo -e "\033[31mYou have uncommit changes, \"finish\" cmd will not record these changes\033[0m"
+#	repo status
+#	read -p "Are you sure to continue?(y/N)" choose
+#	#TODO: should switch y Y n N yes no ...
+#	if [ "z$choose" != "zy" ];then
+#		exit 1
+#	fi
+#fi
+
+#check branch
+ALL_PROJECT_FOLDER=`repo list | cut -d ' ' -f 1`
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+	#TODO: should remove
+	if [ "$i" == "build" ];then
+		continue
+	fi
+
+	cd $REPO_ROOT/$i
+	if [ "`git branch | grep "^* " | cut -c 3-`" != "$PHONE_NAME" ];then
+		echo -e "\033[31mNot on \"$PHONE_NAME\" branch, in $i\033[0m"
+		exit 1
+	fi
+done
+
+#clean folder
+if [ -d $TARGET_FOLDER ];then
+	rm -rf $TARGET_FOLDER
+fi
+mkdir -p $TARGET_FOLDER
+
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+    mkdir -p $TARGET_FOLDER/patch/$i/commit
+done
+
+#exact patches
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+	#TODO: should remove 	
+	if [ "$i" == "build" ];then
+		continue
+	fi
+
+	cd $REPO_ROOT/$i
+	git format-patch ut_repo/$PHONE_STABLE_BRANCH -o $TARGET_FOLDER/patch/$i/commit
+done
+
+#remove empty patch folder
+del_empty_folder ()
+{
+	find "$1" -mindepth 1 -maxdepth 1 -type d | while read -r dir
+	do
+		if [[ -z "$(find "$dir" -mindepth 1 -type f)" ]] >/dev/null
+		then
+			rm -rf "$dir" 
+		fi
+		if [ -d "$dir" ]
+		then
+			del_empty_folder "$dir"
+		fi
+	done
+}
+del_empty_folder "$TARGET_FOLDER/patch"
+echo -e "\033[33mexact patches finished\033[0m"
+
+
+#store .cur_project
+cp $REPO_ROOT/.cur_project $TARGET_FOLDER
+
+#TODO: copy config files, first del config folder
+#store config files
+
+#store xml
+cp $XML_FILE $TARGET_FOLDER
+
+#clean all
+repo forall -i ost/build -c git reset --hard ut_repo/$PHONE_STABLE_BRANCH
+repo forall -i ost/build -c git clean -df
+repo abandon $PHONE_NAME
+repo init -m all_$PHONE_STABLE_BRANCH.xml
+repo sync -d
+rm $PHONE_NAME_FILE $XML_FILE
+echo -e "\033[33mclean all finished\033[0m"
+echo -e "\033[32mFinish \"$PHONE_NAME\" success\033[0m"

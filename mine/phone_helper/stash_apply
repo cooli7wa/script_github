@@ -1,0 +1,55 @@
+#!/bin/bash -
+
+#make sure manifest point to a exist xml
+repo init -m all_trunk.xml
+
+#TODO: should check folder
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+CUSTOM_FOLDER=$REPO_ROOT/customization/
+TMP_FOLDER=$CUSTOM_FOLDER/tmp
+TARGET_FOLDER=$TMP_FOLDER
+PHONE_NAME_FILE=$TARGET_FOLDER/phone_name
+XML_FILE=$TARGET_FOLDER/phone_setting.xml
+PHONE_NAME=`cat $PHONE_NAME_FILE`
+PHONE_STABLE_BRANCH=`grep -oP '<default revision="\Kstable_[\d.]+' $XML_FILE`
+
+echo -e "current phone_name is \033[33m$PHONE_NAME\033[0m"
+echo -e "stable branch is \033[33m$PHONE_STABLE_BRANCH\033[0m"
+echo ""
+
+#prepare branch
+echo -e "\033[33mBegin to repo init and sync..\033[0m"
+repo init -m ../../customization/tmp/phone_setting.xml
+repo sync -d
+repo forall -i ost/build -c git reset --hard ut_repo/$PHONE_STABLE_BRANCH
+repo forall -i ost/build -c git clean -df
+echo -e "\033[33mCheckout to tmp phone branch for develop..\033[0m"
+repo abandon $PHONE_NAME
+repo forall -i ost/build -c git checkout -b $PHONE_NAME
+
+#add patches
+cd $TARGET_FOLDER/patch
+find ./ -mindepth 1 -maxdepth 1 -type d | while read -r dir
+do
+	cd $REPO_ROOT/$dir
+	if [ -d $TARGET_FOLDER/patch/$dir/commit ];then
+		git am $TARGET_FOLDER/patch/$dir/commit/*
+	fi
+	if [ -d $TARGET_FOLDER/patch/$dir/cached ];then
+		git apply $TARGET_FOLDER/patch/$dir/cached/cached.patch
+		git add --all
+	fi
+	if [ -d $TARGET_FOLDER/patch/$dir/uncached ];then
+		git apply $TARGET_FOLDER/patch/$dir/uncached/uncached.patch
+	fi
+	if [ -d $TARGET_FOLDER/patch/$dir/untracked ];then
+		cd $TARGET_FOLDER/patch/$dir/untracked/
+		cp --parents -rf *  $REPO_ROOT/$dir
+		cd -
+	fi
+done
+
+#restore .cur_project
+cp $TARGET_FOLDER/.cur_project $REPO_ROOT
+
+echo -e "\033[32mStash_apply \"$PHONE_NAME\" success\033[0m"
