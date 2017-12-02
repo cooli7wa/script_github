@@ -1,0 +1,144 @@
+#!/bin/bash -
+
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+CUSTOM_FOLDER_PATH=$REPO_ROOT/customization
+VENDOR_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor
+TMP_FILE_PATH=/tmp/phone_restore.tmp
+ORIGIN_XML_FILE=`cd $REPO_ROOT; realpath --relative-to=./ .repo/manifest.xml`
+PHONE_NAME=""
+
+source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
+
+#check vendor phones exist
+check_and_mkdir $VENDOR_FOLDER_PATH
+CURRENT_VENDOR_PHONE_LIST=`cd $VENDOR_FOLDER_PATH; find -mindepth 1 -maxdepth 1 -type d | sed "/stash/d; s/^\.\///g"`
+if [ -z "$CURRENT_VENDOR_PHONE_LIST" ];then
+	echo_color RED "No phones"
+	exit 1
+fi
+
+#choose which phone to restore
+echo_color YELLOW "Please choose phone: "
+choose_one "$CURRENT_VENDOR_PHONE_LIST" PHONE_NAME
+
+PHONE_STABLE_VERSION=`grep -oP '<default revision="\Kstable_[\d.]+' $CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME/stable.xml`
+
+show_info $PHONE_NAME $PHONE_STABLE_VERSION
+
+####################################################################################
+
+check_xml_projects $CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME/stable.xml $ORIGIN_XML_FILE
+
+for_pick_only=0
+need_checkout=1
+auto_apply=0
+need_stash=0
+
+check_uncommit_changes
+if [ $? != 0 ];then
+	need_stash=1
+	echo_color YELLOW "You have uncommit changes"
+	echo_color YELLOW "We will stash first to avoid conflict"
+	echo_color YELLOW "Do you want to auto apply these changes on new phone branch? (y/N)"
+	read choose
+	if [[ "z$choose" =~ ^z[yY](es)?$ ]];then
+		auto_apply=1
+	fi
+fi
+
+echo_color YELLOW "Just for cherry-pick only?(y/N)"
+echo_color YELLOW "(If yes, .cur_project/phone_name/stable.xml will not change)"
+read choose
+if [[ "z$choose" =~ ^z[yY](es)?$ ]];then
+	for_pick_only=1
+fi
+
+if [ $for_pick_only -eq 1 ];then
+	need_checkout=0
+	#check and store current branches
+	>$TMP_FILE_PATH
+	ALL_PROJECTS_NAME=`repo list | cut -d ' ' -f 1`
+	REPO_STATUS=`repo status`
+	for project in ${ALL_PROJECTS_NAME[@]}
+	do
+		branch=`echo -n "$REPO_STATUS" | grep "project $project" | grep -oP 'branch \K.*'`
+		if [ -z "$branch" ];then
+			echo_color RED "\"$project\" is detached, don't support \"cherry-pick only\""
+			exit 1
+		fi
+		echo "$project $branch" >> $TMP_FILE_PATH
+	done
+fi
+
+####################################################################################
+
+TARGET_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME
+PHONE_NAME_FILE_PATH=$VENDOR_FOLDER_PATH/phone_name
+if [ $for_pick_only -eq 1 ];then
+XML_FILE_PATH=$TARGET_FOLDER_PATH/stable.xml
+XML_FILE_PATH_UNDER_CUSTOM=vendor/$PHONE_NAME/stable.xml
+else
+XML_FILE_PATH=$VENDOR_FOLDER_PATH/stable.xml
+XML_FILE_PATH_UNDER_CUSTOM=vendor/stable.xml
+cp $TARGET_FOLDER_PATH/stable.xml $XML_FILE_PATH
+echo $PHONE_NAME > $PHONE_NAME_FILE_PATH
+fi
+
+####################################################################################
+
+echo_color YELLOW "Begin restore phone, please wait .."
+
+if [ $need_stash -eq 1 ];then
+	#use stash to prevent uncommitted changes from affecting the operation
+	export stash_message=`date`
+	mrepo forall -c git stash save -u "$stash_message"
+fi
+
+if [ -n "`mrepo branch | grep " $PHONE_NAME "`" ];then
+	mrepo abandon $PHONE_NAME
+fi
+
+mrepo init -m ../../customization/$XML_FILE_PATH_UNDER_CUSTOM
+mrepo sync -d
+mrepo forall -c git checkout -b $PHONE_NAME
+
+#add patches
+if [ -e $TARGET_FOLDER_PATH/patch ];then
+	cd $TARGET_FOLDER_PATH/patch
+	find ./ -mindepth 1 -maxdepth 1 -type d | while read -r dir
+	do
+		cd $REPO_ROOT/$dir
+		if [ -d $TARGET_FOLDER_PATH/patch/$dir/commit ];then
+			git am $TARGET_FOLDER_PATH/patch/$dir/commit/*
+		fi
+	done
+fi
+
+#restore .cur_project
+if [ $for_pick_only -eq 0 ];then
+	cp $TARGET_FOLDER_PATH/.cur_project $REPO_ROOT
+fi
+
+#if no need checkout, then checkout back to origin branch
+if [ $need_checkout -eq 0 ];then
+	#restore origin xml
+	mrepo init -m ../../$ORIGIN_XML_FILE
+	export TMP_FILE_PATH
+	repo forall -c 'branch=`cat $TMP_FILE_PATH | grep -oP "$REPO_PATH \\K.*"`; git checkout $branch' >/dev/null 2>&1
+fi
+
+#apply stash if need
+if [ $auto_apply -eq 1 ];then
+	#Note: May fail, user should fix confict manually
+	export TMP_FILE_PATH
+	repo forall -c 'echo $REPO_PATH > $TMP_FILE_PATH; stash=`git stash list | grep "$stash_message" | cut -d : -f1`; if [ -n "$stash" ];then git stash pop $stash >> $TMP_FILE_PATH 2>&1; fi; if [ $? -ne 0 ]; then echo "\033[31mapply failed:\033[0m"; cat $TMP_FILE_PATH; fi'
+else
+	if [ $need_stash -eq 1 ];then
+		echo_color YELLOW "Auto_apply disabled"
+		echo_color YELLOW "You can apply stashed changes by using \"git stash pop\" in project folder"
+	fi
+fi
+
+echo_color GREEN "Restore \"$PHONE_NAME\" success"
+echo_color YELLOW "You can begin to develop.."
+echo_color YELLOW "(use \"stash\" to save develop status, \"finish\" to complete develop)"

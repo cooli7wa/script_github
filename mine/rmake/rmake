@@ -23,6 +23,7 @@ function __rmake_cmd_HUB
 }
 function rmake
 {
+	OST_CURRENT_FOLDER=`pwd`
 	OPTIND=0
     while getopts :h opt
     do
@@ -49,5 +50,5 @@ function rmake
         return
     fi
     export REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
-    (cd $REPO_ROOT_PATH && eval make $*)
+    (cd $REPO_ROOT_PATH && eval make $* OST_CURRENT_FOLDER=$OST_CURRENT_FOLDER)
 }

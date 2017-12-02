@@ -1,0 +1,60 @@
+#!/bin/bash -
+
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+MANIFEST_FOLDER_PATH=$REPO_ROOT/.repo/manifests
+#TODO: should change to master in future
+ORIGIN_TOP_XML_FILE_PATH=$MANIFEST_FOLDER_PATH/all_stable_2.7.0.xml
+PHONE_HELPER_FOLDER_PATH=$REPO_ROOT/tools_manager/phone_helper
+STABLE_VERSION=""
+
+source $PHONE_HELPER_FOLDER_PATH/_phone_utils
+
+#enter stable version
+echo_color YELLOW "Enter stable version: "
+read STABLE_VERSION
+
+STABLE_FOLDER_PATH=$REPO_ROOT/customization/common/$STABLE_VERSION
+STABLE_XML_FILE_PATH=$STABLE_FOLDER_PATH/stable.xml
+
+#if stable name already exist, should stop
+if [ -e "$STABLE_FOLDER_PATH" ];then
+	echo_color RED "\"$STABLE_VERSION\" already exist"
+	exit 1
+else
+	#if no .cur_project, should stop
+	if [ ! -e "$REPO_ROOT/.cur_project" ];then
+		echo_color RED "Not find .cur_project"
+		exit 1
+	else
+		mkdir -p $STABLE_FOLDER_PATH
+		cp $ORIGIN_TOP_XML_FILE_PATH $STABLE_XML_FILE_PATH
+		cp $REPO_ROOT/.cur_project $STABLE_FOLDER_PATH
+	fi
+fi
+
+ALL_XML=('isee_remote.xml'
+		 'isee_projects.xml'
+		 'isee_ree_projects.xml'
+		 'isee_build.xml')
+
+#join xml files
+for xml in ${ALL_XML[@]}
+do
+	xml_context=`cat $MANIFEST_FOLDER_PATH/$xml`
+	xml_context_project=`echo "$xml_context" | sed '/<?xml version/d; /[</]\+manifest>/d; /^[ \t]*$/d'`
+	xml_context_project_prefix=`echo "$xml_context_project" | sed 's:\/:\\\/:g' | tr '\n' '@'`
+	sed -i "/name=\"$xml\"/ s/.*/${xml_context_project_prefix}/g; s/@/\n/g" $STABLE_XML_FILE_PATH
+done
+
+#add revision for each project in xml
+export STABLE_XML_FILE_PATH
+repo forall -c 'revision=`git log --pretty=oneline -1 | cut -d " " -f 1`;repo_path_prefix=`echo $REPO_PATH | sed "s:\/:\\\\\\\\/:g"`; sed -i "/<project path=\"$repo_path_prefix\"/ s:\([/]*>[ \t]*$\): revision=\"$revision\"\1:g" $STABLE_XML_FILE_PATH'
+
+#if [ -n "`mrepo branch | grep " $STABLE_VERSION "`" ];then
+#	mrepo abandon $STABLE_VERSION
+#fi
+#mrepo init -m ../../customization/common/$STABLE_VERSION/stable.xml
+#mrepo sync -d
+#mrepo forall -c git checkout -b $STABLE_VERSION
+
+echo_color GREEN "Create success (\"$STABLE_FOLDER_PATH\")"

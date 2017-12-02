@@ -347,59 +347,6 @@ function vcmd
         type $1
     fi
 }
-complete -F __rmake_cmd_HUB rmake
-function __rmake_cmd
-{
-    local cur="${COMP_WORDS[COMP_CWORD]}"
-    local REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
-    local options="`cd $REPO_ROOT_PATH && make -pRrq : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($1 !~ "^[#.]") {print $1}}' | egrep -v '^[^[:alnum:]]' | sort`"
-    COMPREPLY=( $(compgen -W "${options}" -- ${cur}) )
-}
-function __rmake_cmd_HUB
-{
-    repo info > /dev/null 2>&1
-    if [ $? != 0 ];then
-        echo "not in repo or sub folders"
-        return
-    fi
-    case $COMP_CWORD in
-    0)  ;;
-    1)  if [ ${COMP_WORDS[0]} == rmake ];then
-            eval __rmake_cmd
-        fi
-        ;;
-    esac
-}
-function rmake
-{
-	OPTIND=0
-    while getopts :h opt
-    do
-        case $opt in
-            h)  echo "Usage: rmake [-h] [REPO_MAKE_COMMAND]"
-                echo "       @REPO_MAKE_COMMAND: same as normal make command in repo"
-                echo "       @-h : show usage"
-				echo ""
-				echo "       You don't need to switch folder for compile now"
-				echo "       You can use this command in repo root folder or sub folders directly"
-				echo "       And rmake can auto completion"
-				return
-                ;;
-            ?)  echo "Invalid option, use -h to see usage"
-				return
-                ;;
-        esac
-    done
-    shift $((OPTIND - 1))
-
-    repo info > /dev/null 2>&1
-    if [ $? != 0 ];then
-        echo "not in repo or sub folders"
-        return
-    fi
-    export REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
-    (cd $REPO_ROOT_PATH && eval make $*)
-}
 complete -c ccolor
 function ccolor
 {
@@ -477,70 +424,162 @@ alias zhmakepkg="ccolor zhmakepkg"
 alias soter_make="ccolor soter_make"
 alias sboot_make="ccolor sboot_make"
 
-complete -F __goto_cmd_HUB goto
-function __goto_cmd
-{
-    local special_subfolders=("ree")
-    local regexp="find -maxdepth 1 -type d | sed '/^\.$\|^\.\/\.\.*/d' | sed 's/\.\///g'"
-
-    local cur="${COMP_WORDS[COMP_CWORD]}"
-    local REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
-    local top_folders="`cd $REPO_ROOT_PATH && eval $regexp`"
-    local sub_folders=""
-    for sub_folder in ${special_subfolders[@]}
-    do
-		sub_folders="$sub_folders""`cd $REPO_ROOT_PATH/$sub_folder && eval "$regexp | sed 's/^/$sub_folder\//g'"`"
-    done
-    local options=$top_folders$sub_folders
-    COMPREPLY=( $(compgen -W "${options}" -- ${cur}) )
-}
-function __goto_cmd_HUB
+function get_repo_root()
 {
     repo info > /dev/null 2>&1
-    if [ $? != 0 ];then
-        echo "not in repo or sub folders"
+    if [ $? != 0 ]; then
         return
     fi
+
+    export REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+}
+export REPO_ROOT_PATH=
+function get_repo_root()
+{
+    repo info > /dev/null 2>&1
+    if [ $? != 0 ]; then
+        return
+    fi
+
+    export REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+}
+export REPO_ROOT_PATH=
+function get_repo_root()
+{
+    repo info > /dev/null 2>&1
+    if [ $? != 0 ]; then
+        return
+    fi
+
+    export REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+}
+complete -F __rmake_cmd_HUB rmake
+function __rmake_cmd
+{
+    get_repo_root
+    if [ -z "$REPO_ROOT_PATH" ]; then
+        return
+    fi
+
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local options="`cd $REPO_ROOT_PATH && make -pRrq : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($1 !~ "^[#.]") {print $1}}' | egrep -v '^[^[:alnum:]]' | sort`"
+    COMPREPLY=( $(compgen -W "${options}" -- ${cur}) )
+}
+function __rmake_cmd_HUB
+{
     case $COMP_CWORD in
     0)  ;;
-    1)  if [ ${COMP_WORDS[0]} == goto ];then
-            eval __goto_cmd
+    1)  if [ ${COMP_WORDS[0]} == rmake ];then
+            eval __rmake_cmd
         fi
         ;;
     esac
 }
-function goto
+function rmake
 {
+	OST_CURRENT_FOLDER=`pwd`
+    get_repo_root
+    if [ -z "$REPO_ROOT_PATH" ]; then
+        return
+    fi
+
     OPTIND=0
     while getopts :h opt
     do
         case $opt in
-            h)  echo "Usage: goto [-h] [FOLDER_IN_REPO]"
-                echo "       @FOLDER_IN_REPO: top folders in repo root path or special sub folders"
+            h)
+                echo "Usage: rmake [-h] [REPO_MAKE_COMMAND]"
+                echo "       @REPO_MAKE_COMMAND: same as normal make command in repo"
                 echo "       @-h : show usage"
-                echo ""
-                echo "       You can jump to the fold interested by using goto"
+                echo "       You don't need to switch folder for compile now"
                 echo "       You can use this command in repo root folder or sub folders directly"
-                echo "       And goto can auto completion"
+                echo "       And rmake can auto completion"
                 return
                 ;;
-            ?)  echo "Invalid option, use -h to see usage"
+            ?)
+                echo "Invalid option, use -h to see usage"
                 return
                 ;;
         esac
     done
     shift $((OPTIND - 1))
 
-    repo info > /dev/null 2>&1
-    if [ $? != 0 ];then
-        echo "not in repo or sub folders"
+	(cd $REPO_ROOT_PATH && eval make $* OST_CURRENT_FOLDER=$OST_CURRENT_FOLDER)
+}
+complete -F __rgo_cmd_HUB rgo
+function __rgo_cmd
+{
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local options="ost build prj project soter mdl pkg ws workshop android release rls"
+    COMPREPLY=( $(compgen -W "${options}" -- ${cur}) )
+}
+function __rgo_cmd_HUB
+{
+    case $COMP_CWORD in
+    0)  ;;
+    1)  if [ ${COMP_WORDS[0]} == rgo ]; then
+            eval __rgo_cmd
+        fi
+        ;;
+    esac
+}
+function rgo
+{
+    get_repo_root
+    if [ -z "$REPO_ROOT_PATH" ]; then
         return
     fi
-    local REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
 
-    if [ $# -eq 0 ];then
-        cd $REPO_ROOT_PATH
+    if [ $# -gt 0 ]; then
+        while [ -n "$1" ]; do
+            case $1 in
+                ost)
+                    cd $REPO_ROOT_PATH
+            break
+                ;;
+                build)
+                    cd $REPO_ROOT_PATH/build
+            break
+                ;;
+                prj|project)
+                    cd $REPO_ROOT_PATH/build/projects
+            break
+                ;;
+                release|rls)
+                    PROJECT_NAME=`rmake show_env | grep DEV_CUR_PROJECT | awk -F '=' '{print $2}' | sed 's/\s//g'`
+            cd $REPO_ROOT_PATH/obj/$PROJECT_NAME/release
+            break
+                ;;
+                mdl)
+                    SOTER_PLATFORM_NAME=`rmake info | grep DEV_TARGET_PLATFORM | awk -F '=' '{print $2}' | sed 's/\s//g'`
+                    cd $REPO_ROOT_PATH/soter/src/l4/conf/modulelist_${SOTER_PLATFORM_NAME}
+            break
+                ;;
+                pkg)
+                    cd $REPO_ROOT_PATH/soter/src/l4/pkg
+            break
+                ;;
+                soter)
+                    cd $REPO_ROOT_PATH/soter
+            break
+                ;;
+                ws|workshop)
+                    cd $REPO_ROOT_PATH/workshop
+            break
+                ;;
+                android)
+                    cd $REPO_ROOT_PATH/android
+            break
+                ;;
+                *)
+                    echo "Unkown place name."
+            break
+                ;;
+            esac
+        done
     else
-        cd $REPO_ROOT_PATH/$*
+        cd $REPO_ROOT_PATH
     fi
 }
+export REPO_ROOT_PATH=
+alias up='cd ..'
