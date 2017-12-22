@@ -1,0 +1,109 @@
+function fwq
+{
+    cmd="$*"
+    current_dir=`pwd`
+    mount_detail=`cat /proc/mounts | grep cooli7wa@192.168.8.66`
+    if [ $? != 0 ];then
+        echo "No mount"
+        return
+    fi
+    mount_num=`echo "$mount_detail" | wc -l`
+    if [ $mount_num -gt 1 ];then
+        echo "You have more than one mount dirs, please umount one and try again"
+        cat /proc/mounts | grep cooli7wa@192.168.8.66
+        return
+    fi
+    mount_dir=`cat /proc/mounts | grep cooli7wa@192.168.8.66 | cut  -d ' ' -f 2`
+    remote_dir=`cat /proc/mounts | grep cooli7wa@192.168.8.66 | cut  -d ' ' -f 1 | cut -d ':' -f 2`
+    echo $current_dir | grep -q $mount_dir
+    if [ $? != 0 ]; then
+        echo "Not in mount dir"
+        return
+    fi
+    relate_dir=${current_dir#$mount_dir}
+    echo "cd $remote_dir/$relate_dir; $cmd"
+    ssh cooli7wa@192.168.8.66 "cd $remote_dir/$relate_dir; $cmd"
+}
+function _fwq_rm_folder
+{
+    local folder=$1
+
+    ssh cooli7wa@192.168.8.66 " \
+    cd /home/1t/aufs/; \
+    if [ -e ./$1 ]; then \
+        echo "rm $1"; \
+        rm -rf ./$1; \
+    fi"
+}
+function _fwq_umount_rm_folder
+{
+    local folder=$1
+
+    ssh cooli7wa@192.168.8.66 " \
+    cd /home/1t/aufs/; \
+    if [ -e ./$1 ]; then \
+        echo "umount $1"; \
+        sudo umount ./$1; \
+        echo "rm $1"; \
+        rm -rf ./$1; \
+    fi"
+}
+function _fwq_create_folder
+{
+    local folder=$1
+
+    ssh cooli7wa@192.168.8.66 " \
+    cd /home/1t/aufs/; \
+    echo "mkdir $1"; \
+    mkdir $1"
+}
+function _fwq_mount_folder
+{
+    local user_name=$1
+
+    ssh cooli7wa@192.168.8.66 " \
+    cd /home/1t/aufs/; \
+    echo "mount mnt_$user_name"; \
+    sudo mount -t overlay overlay -o upperdir=./.container_$user_name,lowerdir=/home/1t/aufs/ost,workdir=./.work_$user_name ./mnt_$user_name"
+}
+function _fwq_clean_folder
+{
+    local user_name=$1
+
+    _fwq_rm_folder ".container_$user_name"
+    _fwq_rm_folder ".work_$user_name"
+    _fwq_umount_rm_folder "mnt_$user_name"
+}
+function _fwq_make_folder
+{
+    local user_name=$1
+
+    _fwq_create_folder ".container_$user_name"
+    _fwq_create_folder ".work_$user_name"
+    _fwq_create_folder "mnt_$user_name"
+    _fwq_mount_folder "$user_name"
+}
+function fwq_mount
+{
+    local local_mount_dir=$1
+    if [ -z "$1" ]; then
+        echo "Please enter mnt_dir, such as: fwq_mount ./mnt"
+    fi
+    local user_name=$USER
+    local fwq_user_folder_num=`ssh cooli7wa@192.168.8.66 "ls -a -1 /home/1t/aufs/ | grep $user_name | wc -l"`
+    local choose=0
+
+    if [ $fwq_user_folder_num == 3 ]; then
+        echo "fwq already has this user's folder, please choose:"
+        echo "1, mount this folder to $local_mount_dir"
+        echo "2, clean and create a new folder, then mount"
+        read choose
+    fi
+
+    if [ $choose != 1 ]; then
+        _fwq_clean_folder "$user_name"
+        _fwq_make_folder "$user_name"
+    fi
+    echo "mount local dir $local_mount_dir"
+    sshfs cooli7wa@192.168.8.66:/home/1t/aufs/mnt_$user_name $local_mount_dir
+}
