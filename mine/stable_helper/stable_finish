@@ -1,0 +1,107 @@
+#!/bin/bash -
+
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+ALL_PROJECT_FOLDER=`repo list | cut -d ' ' -f 1`
+COMMON_FOLDER_PATH=$REPO_ROOT/customization/common
+PHONE_HELPER_FOLDER_PATH=$REPO_ROOT/tools_manager/phone_helper
+STABLE_VERSION=""
+MTK_STABLE_NAME=""
+
+source $PHONE_HELPER_FOLDER_PATH/_phone_utils
+
+#list current stable version
+#CURRENT_MTK_STABLE_LIST=`cd $COMMON_FOLDER_PATH; ls -1 | grep MTK`
+CURRENT_STABLE_LIST=`cd $COMMON_FOLDER_PATH; ls -1`
+echo_color YELLOW "Please choose stable version: "
+#choose_one "$CURRENT_MTK_STABLE_LIST" MTK_STABLE_NAME
+choose_one "$CURRENT_STABLE_LIST" MTK_STABLE_NAME
+#IS_STABLE_MTK=`echo $MTK_STABLE_NAME | grep -q MTK && echo yes`
+
+STABLE_FOLDER_PATH=$REPO_ROOT/customization/common/$MTK_STABLE_NAME
+TARGET_FOLDER_PATH=$STABLE_FOLDER_PATH
+STABLE_VERSION=`grep -oP '<default revision="\Kstable_[\d.]+' $STABLE_FOLDER_PATH/stable.xml`
+
+####################################################################################
+
+#check uncommit changes
+check_uncommit_changes
+if [ $? != 0 ];then
+	echo_color YELLOW "You have uncommit changes, \"finish\" will not record these changes"
+	echo_color YELLOW "And these changes will be cleaned"
+	echo_color YELLOW "Are you sure to continue?(y/N)"
+	read choose
+	if [[ ! "z$choose" =~ ^z[yY](es)?$ ]];then
+		exit 1
+	fi
+fi
+
+#check branch
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+	cd $REPO_ROOT/$i
+	if [ "`git branch | grep "^* " | cut -c 3-`" != "$MTK_STABLE_NAME" ];then
+		echo_color RED "\"$i\", not on \"$MTK_STABLE_NAME\" branch, please check"
+		exit 1
+	fi
+done
+
+####################################################################################
+
+echo_color YELLOW "Begin finish stable, please wait .."
+
+#clean folder
+check_and_remove "$TARGET_FOLDER_PATH/patch"
+mkdir -p "$TARGET_FOLDER_PATH/patch"
+
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+	mkdir -p $TARGET_FOLDER_PATH/patch/$i/commit
+	mkdir -p $TARGET_FOLDER_PATH/patch/$i/tag
+done
+
+#exact patches
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+	cd $REPO_ROOT/$i
+	git format-patch ut_repo/$STABLE_VERSION -o $TARGET_FOLDER_PATH/patch/$i/commit > /dev/null 2>&1
+done
+
+#exact tags
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+	project_folder=$TARGET_FOLDER_PATH/patch/$i
+	if [ -e $REPO_ROOT/$i/.git/refs/tags ];then
+		cd $REPO_ROOT/$i/.git/refs/tags
+		ls -1 $project_folder/commit | while read line
+		do
+			commit_id=`cat $project_folder/commit/$line | sed 1q | grep -oP '^From \K[0-9a-z]+'`
+			tag_file=`grep -r $commit_id | cut -d ':' -f 1`
+			if [ -n "$tag_file" ];then
+				cp $tag_file $project_folder/tag/
+			fi
+		done
+	fi
+done
+
+del_empty_folder "$TARGET_FOLDER_PATH/patch"
+
+#cp all patches to common_patches
+rm -rf $TARGET_FOLDER_PATH/common_patch
+mkdir $TARGET_FOLDER_PATH/common_patch
+cd $TARGET_FOLDER_PATH/patch
+find -type d -name "commit" -exec cp --parents -r {} $TARGET_FOLDER_PATH/common_patch/ \;
+
+#store .cur_project
+cp $REPO_ROOT/.cur_project $STABLE_FOLDER_PATH
+
+#clean all
+mrepo forall -c git reset --hard
+mrepo forall -c git clean -df
+
+#repo init & sync
+echo_color YELLOW "repo init all_trunk.xml and sync"
+mrepo init all_trunk.xml
+mrepo sync -d
+mrepo abandon $MTK_STABLE_NAME
+
+echo_color GREEN "Finish \"$MTK_STABLE_NAME\" success"

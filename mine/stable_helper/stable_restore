@@ -1,0 +1,57 @@
+#!/bin/bash -
+
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+ALL_PROJECT_FOLDER=`repo list | cut -d ' ' -f 1`
+COMMON_FOLDER_PATH=$REPO_ROOT/customization/common
+PHONE_HELPER_FOLDER_PATH=$REPO_ROOT/tools_manager/phone_helper
+MTK_STABLE_NAME=""
+
+source $PHONE_HELPER_FOLDER_PATH/_phone_utils
+
+#list current stable version
+#CURRENT_MTK_STABLE_LIST=`cd $COMMON_FOLDER_PATH; ls -1 | grep MTK`
+CURRENT_STABLE_LIST=`cd $COMMON_FOLDER_PATH; ls -1`
+echo_color YELLOW "Please choose stable version: "
+#choose_one "$CURRENT_MTK_STABLE_LIST" MTK_STABLE_NAME
+choose_one "$CURRENT_STABLE_LIST" MTK_STABLE_NAME
+
+STABLE_FOLDER_PATH=$REPO_ROOT/customization/common/$MTK_STABLE_NAME
+TARGET_FOLDER_PATH=$STABLE_FOLDER_PATH
+
+####################################################################################
+
+echo_color YELLOW "Begin restore stable, please wait .."
+
+if [ -n "`repo branch | grep " $MTK_STABLE_NAME "`" ];then
+	mrepo abandon $MTK_STABLE_NAME
+fi
+
+mrepo init -m ../../customization/common/$MTK_STABLE_NAME/stable.xml
+mrepo sync -d
+mrepo forall -c git checkout -b $MTK_STABLE_NAME
+
+#restore patch
+if [ -e $TARGET_FOLDER_PATH/patch ];then
+	cd $TARGET_FOLDER_PATH/patch
+	find -type d -name "commit" | sed 's/commit$//g' | while read -r dir
+	do
+		project_folder=$TARGET_FOLDER_PATH/patch/$dir
+		cd $REPO_ROOT/$dir
+		ls -1 $project_folder/commit | while read line
+		do
+			git am $project_folder/commit/$line
+			if [ -d $project_folder/tag ];then
+				commit_id=`cat $project_folder/commit/$line | sed 1q | grep -oP '^From \K[0-9a-z]+'`
+				tag_name=`cd $project_folder/tag && grep -r $commit_id | cut -d ':' -f 1`
+				if [ -n "$tag_name" ];then
+					git tag $tag_name
+				fi
+			fi
+		done
+	done
+fi
+
+#restore .cur_project
+cp $TARGET_FOLDER_PATH/.cur_project $REPO_ROOT
+
+echo_color GREEN "Restore \"$MTK_STABLE_NAME\" success"

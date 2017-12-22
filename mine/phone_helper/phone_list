@@ -1,0 +1,39 @@
+#!/bin/bash -
+
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+CUSTOM_FOLDER=$REPO_ROOT/customization/
+NEW_FOLDER=$CUSTOM_FOLDER/new
+VENDOR_FOLDER=$CUSTOM_FOLDER/vendor
+
+source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
+
+vendor_phone_name=""
+new_phone_name=""
+if [ -e "$VENDOR_FOLDER/phone_name" ]; then
+	vendor_phone_name=`cat $VENDOR_FOLDER/phone_name`
+fi
+if [ -e "$NEW_FOLDER/phone_name" ]; then
+	new_phone_name=`cat $NEW_FOLDER/phone_name`
+fi
+
+vendor_stash_phone_name=""
+new_stash_phone_name=""
+if [ -e "$VENDOR_FOLDER/stash/phone_name" ]; then
+	vendor_stash_phone_name=`cat $VENDOR_FOLDER/stash/phone_name`
+fi
+if [ -e "$NEW_FOLDER/stash/phone_name" ]; then
+	new_stash_phone_name=`cat $NEW_FOLDER/stash/phone_name`
+fi
+
+phones=`cd $VENDOR_FOLDER; find -mindepth 1 -maxdepth 1 -type d | sed "/stash/d; s/^\.\///g"`
+echo_color YELLOW "All phones:"
+for phone in $phones
+do
+	echo "  $phone"
+done
+echo_color YELLOW "Current phone:"
+echo "  vendor: $vendor_phone_name"
+echo "  new: $new_phone_name"
+echo_color YELLOW "Stash phone:"
+echo "  vendor: $vendor_stash_phone_name"
+echo "  new: $new_stash_phone_name"

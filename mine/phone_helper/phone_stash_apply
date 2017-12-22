@@ -1,0 +1,126 @@
+#!/bin/bash -
+
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+CUSTOM_FOLDER_PATH=$REPO_ROOT/customization/
+NEW_FOLDER_PATH=$CUSTOM_FOLDER_PATH/new
+VENDOR_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor
+ORIGIN_XML_FILE=`cd $REPO_ROOT; realpath --relative-to=./ .repo/manifest.xml`
+
+source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
+
+#check uncommit changes
+if [ -n "`repo status | grep '^ ..\s'`" ];then
+	repo status
+	echo_color YELLOW "You have uncommit changes, \"stash_apply\" will clean these changes"
+	echo_color YELLOW "Are you sure to continue?(y/N)"
+	read choose
+	if [[ ! "z$choose" =~ ^z[yY](es)?$ ]];then
+		exit 1
+	fi
+fi
+
+#choose which to stash_apply, new or vendor
+vendor_phone_name=""
+new_phone_name=""
+if [ -e "$VENDOR_FOLDER_PATH/stash/phone_name" ]; then
+	vendor_phone_name=`cat $VENDOR_FOLDER_PATH/stash/phone_name`
+fi
+if [ -e "$NEW_FOLDER_PATH/stash/phone_name" ]; then
+	new_phone_name=`cat $NEW_FOLDER_PATH/stash/phone_name`
+fi
+if [[ -z "$vendor_phone_name" && -z "$new_phone_name" ]]; then
+	echo_color YELLOW "No stashed phone"
+	exit 1
+fi
+if [[ -n "$new_phone_name" && -n "$vendor_phone_name" ]]; then
+	echo_color YELLOW "Please choose which to stash apply: "
+	echo "1 \"$new_phone_name\" (new phone)"
+	echo "2 \"$vendor_phone_name\" (vendor phone)"
+	read choose
+	case "$choose" in
+	1) choosed_folder=$NEW_FOLDER_PATH;;
+	2) choosed_folder=$VENDOR_FOLDER_PATH;;
+	*) echo_color RED "No such number";exit 1;;
+	esac
+else
+	if [ -n "$vendor_phone_name" ]; then
+		choosed_folder=$VENDOR_FOLDER_PATH
+	else
+		choosed_folder=$NEW_FOLDER_PATH
+	fi
+fi
+
+TARGET_FOLDER_PATH=$choosed_folder
+PHONE_NAME_FILE_PATH=$TARGET_FOLDER_PATH/stash/phone_name
+XML_FILE_PATH=$TARGET_FOLDER_PATH/stash/stable.xml
+PHONE_NAME=`cat $PHONE_NAME_FILE_PATH`
+PHONE_STABLE_VERSION=`grep -oP '<default revision="\Kstable_[\d.]+' $XML_FILE_PATH`
+
+show_info $PHONE_NAME $PHONE_STABLE_VERSION
+
+####################################################################################
+
+check_xml_projects $XML_FILE_PATH $ORIGIN_XML_FILE
+
+####################################################################################
+
+echo_color YELLOW "Begin stash_apply phone, please wait .."
+
+#clean changes
+mrepo forall -c git reset --hard
+mrepo forall -c git clean -df
+
+#restore xml & phone_name
+cp $XML_FILE_PATH $TARGET_FOLDER_PATH
+cp $PHONE_NAME_FILE_PATH $TARGET_FOLDER_PATH
+
+#prepare branch
+mrepo init -m ../../customization/${choosed_folder##*/}/stable.xml
+mrepo sync -d
+
+if [ -n "`repo branch | grep " $PHONE_NAME "`" ];then
+	mrepo abandon $PHONE_NAME
+fi
+mrepo forall -c git checkout -b $PHONE_NAME
+
+#add patches & tags
+if [ -e $TARGET_FOLDER_PATH/stash/patch ];then
+	cd $TARGET_FOLDER_PATH/stash/patch
+	find -type d \( -name "commit" -o -name "uncached" -o -name "cached" -o -name "untracked" \) | sed -r 's/(.*\/)[a-z]+$/\1/g' | sort -u | while read -r dir
+	do
+		project_folder=$TARGET_FOLDER_PATH/stash/patch/$dir
+		cd $REPO_ROOT/$dir
+		if [ -d $project_folder/commit ];then
+			ls -1 $project_folder/commit | while read line
+			do
+				git am $project_folder/commit/$line
+				if [ -d $project_folder/tag ];then
+					commit_id=`cat $project_folder/commit/$line | sed 1q | grep -oP '^From \K[0-9a-z]+'`
+					tag_name=`cd $project_folder/tag && grep -r $commit_id | cut -d ':' -f 1`
+					if [ -n "$tag_name" ];then
+						git tag $tag_name
+					fi
+				fi
+			done
+		fi
+		if [ -d $project_folder/cached ];then
+			git apply $project_folder/cached/cached.patch
+			git add --all
+		fi
+		if [ -d $project_folder/uncached ];then
+			git apply $project_folder/uncached/uncached.patch
+		fi
+		if [ -d $project_folder/untracked ];then
+			cd $project_folder/untracked/
+			cp --parents -rf *  $REPO_ROOT/$dir
+		fi
+	done
+fi
+
+#restore .cur_project
+cp $TARGET_FOLDER_PATH/stash/.cur_project $REPO_ROOT
+
+#clean stash folder
+rm -rf $TARGET_FOLDER_PATH/stash
+
+echo_color GREEN "Stash_apply \"$PHONE_NAME\" success"

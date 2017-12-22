@@ -1,0 +1,125 @@
+#!/bin/bash -
+
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+CUSTOM_FOLDER_PATH=$REPO_ROOT/customization/
+NEW_FOLDER_PATH=$CUSTOM_FOLDER_PATH/new
+VENDOR_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor
+
+source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
+
+#choose which to finish, new or vendor
+vendor_phone_name=""
+new_phone_name=""
+unchoosed_folder=""
+if [ -e "$VENDOR_FOLDER_PATH/phone_name" ]; then
+	vendor_phone_name=`cat $VENDOR_FOLDER_PATH/phone_name`
+fi
+if [ -e "$NEW_FOLDER_PATH/phone_name" ]; then
+	new_phone_name=`cat $NEW_FOLDER_PATH/phone_name`
+fi
+if [[ -z "$vendor_phone_name" && -z "$new_phone_name" ]]; then
+	echo_color YELLOW "No phone to finish"
+	exit 1
+fi
+if [[ -n "$new_phone_name" && -n "$vendor_phone_name" ]]; then
+	echo_color YELLOW "Please choose which to finish: "
+	echo "1 \"$new_phone_name\" (new phone)"
+	echo "2 \"$vendor_phone_name\" (vendor phone)"
+	read choose
+	case "$choose" in
+	1) choosed_folder=$NEW_FOLDER_PATH; unchoosed_folder=$VENDOR_FOLDER_PATH;;
+	2) choosed_folder=$VENDOR_FOLDER_PATH; unchoosed_folder=$NEW_FOLDER_PATH;;
+	*) echo_color RED "No such number";exit 1;;
+	esac
+else
+	if [ -n "$vendor_phone_name" ]; then
+		choosed_folder=$VENDOR_FOLDER_PATH
+	else
+		choosed_folder=$NEW_FOLDER_PATH
+	fi
+fi
+
+PHONE_NAME_FILE_PATH=$choosed_folder/phone_name
+XML_FILE_PATH=$choosed_folder/stable.xml
+PHONE_NAME=`cat $PHONE_NAME_FILE_PATH`
+TARGET_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME
+PHONE_STABLE_VERSION=`grep -oP '<default revision="\Kstable_[\d.]+' $XML_FILE_PATH`
+
+show_info $PHONE_NAME $PHONE_STABLE_VERSION
+
+####################################################################################
+
+check_uncommit_changes
+if [ $? != 0 ];then
+	echo_color YELLOW "You have uncommit changes, \"finish\" will not record these changes"
+	echo_color YELLOW "And these changes will be cleaned"
+	echo_color YELLOW "Are you sure to continue?(y/N)"
+	read choose
+	if [[ ! "z$choose" =~ ^z[yY](es)?$ ]];then
+		exit 1
+	fi
+fi
+
+#check branch
+ALL_PROJECT_FOLDER=`repo list | cut -d ' ' -f 1`
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+	cd $REPO_ROOT/$i
+	if [ "`git branch | grep "^* " | cut -c 3-`" != "$PHONE_NAME" ];then
+		echo_color RED "\"$i\", not on \"$PHONE_NAME\" branch, please check"
+		exit 1
+	fi
+done
+
+####################################################################################
+
+echo_color YELLOW "Begin finish phone, please wait .."
+
+#clean folder
+check_and_remove "$TARGET_FOLDER_PATH"
+mkdir -p "$TARGET_FOLDER_PATH"
+
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+	mkdir -p $TARGET_FOLDER_PATH/patch/$i/commit
+	mkdir -p $TARGET_FOLDER_PATH/patch/$i/tag
+done
+
+#exact patches
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+	cd $REPO_ROOT/$i
+	git format-patch ut_repo/$PHONE_STABLE_VERSION -o $TARGET_FOLDER_PATH/patch/$i/commit > /dev/null 2>&1
+done
+
+#exact tags
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+	project_folder=$TARGET_FOLDER_PATH/patch/$i
+	if [ -e $REPO_ROOT/$i/.git/refs/tags ];then
+		cd $REPO_ROOT/$i/.git/refs/tags
+		ls -1 $project_folder/commit | while read line
+		do
+			commit_id=`cat $project_folder/commit/$line | sed 1q | grep -oP '^From \K[0-9a-z]+'`
+			tag_file=`grep -r $commit_id | cut -d ':' -f 1`
+			if [ -n "$tag_file" ];then
+				cp $tag_file $project_folder/tag/
+			fi
+		done
+	fi
+done
+
+del_empty_folder "$TARGET_FOLDER_PATH/patch"
+
+cp $REPO_ROOT/.cur_project $TARGET_FOLDER_PATH
+
+#clean all
+mrepo forall -c git reset --hard
+mrepo forall -c git clean -df
+mv $XML_FILE_PATH $TARGET_FOLDER_PATH
+rm $PHONE_NAME_FILE_PATH
+
+smart_xml_change "$unchoosed_folder"
+mrepo abandon $PHONE_NAME
+
+echo_color GREEN "Finish \"$PHONE_NAME\" success"
