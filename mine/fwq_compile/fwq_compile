@@ -29,7 +29,7 @@ function _fwq_rm_folder
     local folder=$1
 
     ssh cooli7wa@192.168.8.66 " \
-    cd /home/1t/aufs/; \
+    cd /home/1t/aufs/user_data; \
     if [ -e ./$1 ]; then \
         echo "rm $1"; \
         rm -rf ./$1; \
@@ -40,8 +40,9 @@ function _fwq_umount_rm_folder
     local folder=$1
 
     ssh cooli7wa@192.168.8.66 " \
-    cd /home/1t/aufs/; \
-    if [ -e ./$1 ]; then \
+    cd /home/1t/aufs/user_data; \
+    cat /proc/mounts | grep -q "/user_data/$folder"; \
+    if [ $? == 0 ]; then \
         echo "umount $1"; \
         sudo umount ./$1; \
         echo "rm $1"; \
@@ -53,7 +54,7 @@ function _fwq_create_folder
     local folder=$1
 
     ssh cooli7wa@192.168.8.66 " \
-    cd /home/1t/aufs/; \
+    cd /home/1t/aufs/user_data; \
     echo "mkdir $1"; \
     mkdir $1"
 }
@@ -62,9 +63,21 @@ function _fwq_mount_folder
     local user_name=$1
 
     ssh cooli7wa@192.168.8.66 " \
-    cd /home/1t/aufs/; \
+    cd /home/1t/aufs/user_data; \
     echo "mount mnt_$user_name"; \
-    sudo mount -t overlay overlay -o upperdir=./.container_$user_name,lowerdir=/home/1t/aufs/ost,workdir=./.work_$user_name ./mnt_$user_name"
+    sudo mount -t aufs -o dirs=./.container_$user_name:/home/1t/aufs/ost none ./mnt_$user_name"
+#sudo mount -t overlay overlay -o upperdir=./.container_$user_name,lowerdir=/home/1t/aufs/ost,workdir=./.work_$user_name ./mnt_$user_name"
+}
+function _fwq_post_flow
+{
+    local user_name=$1
+
+    # soter clean, soter is special, obj will record source code position
+    # if don't rm, first time compile ,will compile origin source code
+    ssh cooli7wa@192.168.8.66 " \
+    cd /home/1t/aufs/user_data/mnt_$user_name; \
+    echo "clean soter"; \
+    make soter_clean > /dev/null"
 }
 function _fwq_clean_folder
 {
@@ -82,15 +95,17 @@ function _fwq_make_folder
     _fwq_create_folder ".work_$user_name"
     _fwq_create_folder "mnt_$user_name"
     _fwq_mount_folder "$user_name"
+    _fwq_post_flow "$user_name"
 }
 function fwq_mount
 {
     local local_mount_dir=$1
     if [ -z "$1" ]; then
         echo "Please enter mnt_dir, such as: fwq_mount ./mnt"
+        return
     fi
     local user_name=$USER
-    local fwq_user_folder_num=`ssh cooli7wa@192.168.8.66 "ls -a -1 /home/1t/aufs/ | grep $user_name | wc -l"`
+    local fwq_user_folder_num=`ssh cooli7wa@192.168.8.66 "ls -a -1 /home/1t/aufs/user_data | grep $user_name | wc -l"`
     local choose=0
 
     if [ $fwq_user_folder_num == 3 ]; then
@@ -105,5 +120,5 @@ function fwq_mount
         _fwq_make_folder "$user_name"
     fi
     echo "mount local dir $local_mount_dir"
-    sshfs cooli7wa@192.168.8.66:/home/1t/aufs/mnt_$user_name $local_mount_dir
+    sshfs cooli7wa@192.168.8.66:/home/1t/aufs/user_data/mnt_$user_name $local_mount_dir
 }

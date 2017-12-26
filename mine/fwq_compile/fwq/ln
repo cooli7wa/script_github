@@ -1,0 +1,11 @@
+#!/bin/bash -
+
+#check -s
+echo "$*" | grep -q '^\-\w*s\w*\| -\w*s\w*'
+if [ $? == 0 ]; then
+    ln_real -r $*
+    exit $?
+else
+    ln_real $*
+    exit $?
+fi

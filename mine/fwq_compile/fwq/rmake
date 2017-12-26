@@ -1,0 +1,43 @@
+#!/bin/bash -
+
+function _get_repo_root
+{
+    repo info > /dev/null 2>&1
+    if [ $? != 0 ]; then
+        return
+    fi
+
+    export REPO_ROOT_PATH=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+}
+function _rmake
+{
+    OST_CURRENT_FOLDER=`pwd`
+    _get_repo_root
+    if [ -z "$REPO_ROOT_PATH" ]; then
+        return
+    fi
+
+    OPTIND=0
+    while getopts :h opt
+    do
+        case $opt in
+            h)
+                echo "Usage: rmake [-h] [REPO_MAKE_COMMAND]"
+                echo "       @REPO_MAKE_COMMAND: same as normal make command in repo"
+                echo "       @-h : show usage"
+                echo "       You don't need to switch folder for compile now"
+                echo "       You can use this command in repo root folder or sub folders directly"
+                echo "       And rmake can auto completion"
+                return
+                ;;
+            ?)
+                echo "Invalid option, use -h to see usage"
+                return
+                ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+
+    (cd $REPO_ROOT_PATH && eval make $* OST_CURRENT_FOLDER=$OST_CURRENT_FOLDER)
+}
+_rmake $*
