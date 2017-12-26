@@ -12,6 +12,7 @@ func_list=(
 	"_fwq_mount_folder"
 	"_fwq_clean_folder"
 	"_fwq_make_folder"
+	"_fwq_post_flow"
 	"fwq_mount"
 )
 alias_list=(
