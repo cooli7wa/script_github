@@ -71,13 +71,6 @@ function _fwq_mount_folder
 function _fwq_post_flow
 {
     local user_name=$1
-
-    # soter clean, soter is special, obj will record source code position
-    # if don't rm, first time compile ,will compile origin source code
-    ssh cooli7wa@192.168.8.66 " \
-    cd /home/1t/aufs/user_data/mnt_$user_name; \
-    echo "clean soter"; \
-    make soter_clean > /dev/null"
 }
 function _fwq_clean_folder
 {
