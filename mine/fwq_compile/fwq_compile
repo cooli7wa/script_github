@@ -108,7 +108,7 @@ function fwq_mount
         echo "Please enter mnt_dir, such as: fwq_mount ./mnt"
         return
     fi
-	if [ ! -d "$1" ]; then
+    if [ ! -d "$1" ]; then
         echo "Dir $1 not exist"
         return
     fi
