@@ -1,5 +1,9 @@
 function fwq
 {
+    local local_cmd=(
+        "git push"
+        "repo upload"
+    )
     cmd="$*"
     current_dir=`pwd`
     mount_detail=`cat /proc/mounts | grep cooli7wa@192.168.8.66`
@@ -20,9 +24,17 @@ function fwq
         echo "Not in mount dir"
         return
     fi
+    for lcmd in "${local_cmd[@]}"
+    do
+        echo "$*" | grep -q "^$lcmd"
+        if [ $? == 0 ]; then
+            eval $*
+            return
+        fi
+    done
     relate_dir=${current_dir#$mount_dir}
     echo "cd $remote_dir/$relate_dir; $cmd"
-    ssh cooli7wa@192.168.8.66 "cd $remote_dir/$relate_dir; $cmd"
+    ssh -t cooli7wa@192.168.8.66 "cd $remote_dir/$relate_dir; $cmd"
 }
 function _fwq_rm_folder
 {
@@ -92,11 +104,15 @@ function _fwq_make_folder
 }
 function fwq_mount
 {
-    local local_mount_dir=$1
     if [ -z "$1" ]; then
         echo "Please enter mnt_dir, such as: fwq_mount ./mnt"
         return
     fi
+	if [ ! -d "$1" ]; then
+        echo "Dir $1 not exist"
+        return
+    fi
+    local local_mount_dir=$1
     local user_name=$USER
     local fwq_user_folder_num=`ssh cooli7wa@192.168.8.66 "ls -a -1 /home/1t/aufs/user_data | grep $user_name | wc -l"`
     local choose=0
@@ -111,6 +127,11 @@ function fwq_mount
     if [ $choose != 1 ]; then
         _fwq_clean_folder "$user_name"
         _fwq_make_folder "$user_name"
+    fi
+    cat /proc/mounts | grep -q "cooli7wa@192.168.8.66.*`realpath $1`.*fuse.sshfs"
+    if [ $? == 0 ]; then
+        echo "umount local dir $local_mount_dir"
+        fusermount -u $1
     fi
     echo "mount local dir $local_mount_dir"
     sshfs cooli7wa@192.168.8.66:/home/1t/aufs/user_data/mnt_$user_name $local_mount_dir
