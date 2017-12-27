@@ -1,0 +1,95 @@
+#!/bin/bash -
+
+time=`date +%Y%m%d_%H%M%S`
+date=`echo $time | cut -d '_' -f 1`
+log_folder="/home/1t/aufs/log/$date"
+flow_log_file="$log_folder/flow_$time.log"
+repo_log_file="$log_folder/repo_$time.log"
+make_log_file="$log_folder/make_$time.log"
+
+project_list=(
+		"6797_svp_isee_n"
+		"6797_svp_isee_o"
+)
+ost_list=(
+		"/home/1t/aufs/ost#trunk"
+)
+
+# exec cmd and record log
+# $1: cmd
+# $2: log_file
+function rexec
+{
+	echo == cmd : $1 == >> $flow_log_file
+	eval $1 >> $2 2>&1
+	if [ $? != 0 ];then
+		echo "FAILED: $1" >> $flow_log_file
+		exit 1
+	fi
+}
+
+# echo and record log
+function recho
+{
+	echo ~~ $* ~~ >> $flow_log_file
+}
+
+# mkdir & create log file
+mkdir -p $log_folder || exit 1
+> $flow_log_file || exit 1
+> $repo_log_file || exit 1
+> $make_log_file || exit 1
+recho "mkdir & create log file ok"
+
+# umount & rm user_data
+# 1. umount all
+recho "begin to umount all"
+mount_folders=`cat /proc/mounts | grep "/home/1t/aufs/user_data/mnt_" | cut -d ' ' -f 2`
+for folder in $mount_folders
+do
+	rexec "sudo umount $folder" $flow_log_file
+done
+recho "umount ok"
+# 2. rm user_data
+recho "begin to rm user_data"
+rexec "rm -rf /home/1t/aufs/user_data" $flow_log_file
+rexec "mkdir /home/1t/aufs/user_data" $flow_log_file
+recho "rm user_data ok"
+
+# update repo & make all & post flow
+recho "begin to update repo & make all"
+for ost in ${ost_list[@]}
+do
+	recho "current ost : $ost"
+	# update repo
+	recho "begin to update repo"
+	ost_folder=`echo $ost | cut -d '#' -f 1`
+	ost_version=`echo $ost | cut -d '#' -f 2`
+	rexec "cd $ost_folder" $flow_log_file
+	rexec "repo forall -c git reset --hard ut_repo/$ost_version" $repo_log_file
+	rexec "repo forall -c git clean -df" $repo_log_file
+	rexec "repo sync -d" $repo_log_file
+	recho "update repo ok"
+	# make all & rm special preloader file
+	recho "begin to make all & rm special preloader file"
+	for project in ${project_list[@]}
+	do
+		recho "current project : $project"
+		# 1. make project
+		rexec "make $project" $make_log_file
+		# 2. checkout android
+		rexec "cd android/alps" $flow_log_file
+		rexec "git checkout ./" $flow_log_file
+		# 3. make all
+		rexec "rmake all" $make_log_file
+		# 4. rm special preloader file
+		rexec "cd $ost_folder" $flow_log_file
+		product=`cat build/projects/$project.mk | grep "DEV_ANDROID_PROJECT" | sed -r 's/^.*full_(.*)-.*$/\1/g'`
+		rexec "rm -rf android/alps/out/target/product/$product/obj/PRELOADER_OBJ/obj/_home_1t*" $make_log_file
+	done
+	recho "make all & rm special preloader file ok"
+	# soter_clean
+	rexec "rmake soter_clean" $make_log_file
+done
+recho "update repo & make all & post flow ok"
+recho "ALL SUCCESS!"

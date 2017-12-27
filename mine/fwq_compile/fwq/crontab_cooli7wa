@@ -1,0 +1,5 @@
+PATH=/usr/lib/jvm/java-8-openjdk-amd64/bin:/home/1t/aufs/ost/ost/mt6797/android_O_v1/alps/out/soong/host/linux-x86/bin:/home/1t/aufs/ost/ost/mt6797/android_O_v1/alps/out/host/linux-x86/bin:/home/1t/aufs/ost/ost/mt6797/android_O_v1/alps/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin:/home/1t/aufs/ost/ost/mt6797/android_O_v1/alps/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin:/home/1t/aufs/ost/ost/mt6797/android_O_v1/alps/development/scripts:/home/1t/aufs/ost/ost/mt6797/android_O_v1/alps/prebuilts/devtools/tools:/home/1t/aufs/ost/ost/mt6797/android_O_v1/alps/external/selinux/prebuilts/bin:/home/1t/aufs/ost/ost/mt6797/android_O_v1/alps/prebuilts/android-emulator/linux-x86_64:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games
+SHELL=/bin/bash
+USER=cooli7wa
+
+30 1 * * * /home/1t/aufs/script/daily_build
