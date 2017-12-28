@@ -1,40 +1,41 @@
 function fwq
 {
-    local local_cmd=(
-        "git push"
-        "repo upload"
-    )
+	local local_cmd=(
+		"git push"
+		"repo upload"
+	)
     cmd="$*"
     current_dir=`pwd`
     mount_detail=`cat /proc/mounts | grep cooli7wa@192.168.8.66`
     if [ $? != 0 ];then
         echo "No mount"
-        return
+        return 1
     fi
     mount_num=`echo "$mount_detail" | wc -l`
     if [ $mount_num -gt 1 ];then
         echo "You have more than one mount dirs, please umount one and try again"
         cat /proc/mounts | grep cooli7wa@192.168.8.66
-        return
+        return 1
     fi
     mount_dir=`cat /proc/mounts | grep cooli7wa@192.168.8.66 | cut  -d ' ' -f 2`
     remote_dir=`cat /proc/mounts | grep cooli7wa@192.168.8.66 | cut  -d ' ' -f 1 | cut -d ':' -f 2`
     echo $current_dir | grep -q $mount_dir
     if [ $? != 0 ]; then
         echo "Not in mount dir"
-        return
+        return 1
     fi
-    for lcmd in "${local_cmd[@]}"
-    do
-        echo "$*" | grep -q "^$lcmd"
-        if [ $? == 0 ]; then
-            eval $*
-            return
-        fi
-    done
+	for lcmd in "${local_cmd[@]}"
+	do
+		echo "$*" | grep -q "^$lcmd"
+		if [ $? == 0 ]; then
+			eval $*
+			return 0
+		fi
+	done
     relate_dir=${current_dir#$mount_dir}
     echo "cd $remote_dir/$relate_dir; $cmd"
     ssh -t cooli7wa@192.168.8.66 "cd $remote_dir/$relate_dir; $cmd"
+	return 0
 }
 function _fwq_rm_folder
 {
@@ -44,8 +45,9 @@ function _fwq_rm_folder
     cd /home/1t/aufs/user_data; \
     if [ -e ./$1 ]; then \
         echo "rm $1"; \
-        rm -rf ./$1; \
-    fi"
+        rm -rf ./$1 || exit 1; \
+    fi" || return 1
+	return 0
 }
 function _fwq_umount_rm_folder
 {
@@ -53,13 +55,17 @@ function _fwq_umount_rm_folder
 
     ssh cooli7wa@192.168.8.66 " \
     cd /home/1t/aufs/user_data; \
-    cat /proc/mounts | grep -q "/user_data/$folder"; \
-    if [ $? == 0 ]; then \
-        echo "umount $1"; \
-        sudo umount ./$1; \
-        echo "rm $1"; \
-        rm -rf ./$1; \
-    fi"
+	cat /proc/mounts | grep -q "/user_data/$folder"; \
+    if [ \$? == 0 ]; then \
+        echo "umount $folder"; \
+        sudo umount ./$folder || exit 1; \
+        echo "rm $folder"; \
+        rm -rf ./$folder || exit 1; \
+	elif [ -d $folder ]; then \
+		echo "rm $folder"; \
+		rm -rf ./$folder || exit 1; \
+    fi" || return 1
+	return 0
 }
 function _fwq_create_folder
 {
@@ -68,7 +74,8 @@ function _fwq_create_folder
     ssh cooli7wa@192.168.8.66 " \
     cd /home/1t/aufs/user_data; \
     echo "mkdir $1"; \
-    mkdir $1"
+    mkdir $1 || exit 1" || return 1
+	return 0
 }
 function _fwq_mount_folder
 {
@@ -77,47 +84,52 @@ function _fwq_mount_folder
     ssh cooli7wa@192.168.8.66 " \
     cd /home/1t/aufs/user_data; \
     echo "mount mnt_$user_name"; \
-    sudo mount -t aufs -o dirs=./.container_$user_name:/home/1t/aufs/ost none ./mnt_$user_name"
+    sudo mount -t aufs -o dirs=./.container_$user_name:/home/1t/aufs/ost none ./mnt_$user_name || exit 1" || return 1
+	return 0
 #sudo mount -t overlay overlay -o upperdir=./.container_$user_name,lowerdir=/home/1t/aufs/ost,workdir=./.work_$user_name ./mnt_$user_name"
-}
-function _fwq_post_flow
-{
-    local user_name=$1
 }
 function _fwq_clean_folder
 {
     local user_name=$1
 
-    _fwq_rm_folder ".container_$user_name"
-    _fwq_rm_folder ".work_$user_name"
-    _fwq_umount_rm_folder "mnt_$user_name"
+    _fwq_rm_folder ".container_$user_name" || return 1
+    _fwq_rm_folder ".work_$user_name" || return 1
+    _fwq_umount_rm_folder "mnt_$user_name" || return 1
+	return 0
 }
 function _fwq_make_folder
 {
     local user_name=$1
 
-    _fwq_create_folder ".container_$user_name"
-    _fwq_create_folder ".work_$user_name"
-    _fwq_create_folder "mnt_$user_name"
-    _fwq_mount_folder "$user_name"
-    _fwq_post_flow "$user_name"
+    _fwq_create_folder ".container_$user_name" || return 1
+    _fwq_create_folder ".work_$user_name" || return 1
+    _fwq_create_folder "mnt_$user_name" || return 1
+    _fwq_mount_folder "$user_name" || return 1
+    _fwq_post_flow "$user_name" || return 1
+	return 0
+}
+function _fwq_post_flow
+{
+    local user_name=$1
+	return 0
 }
 function fwq_mount
 {
     if [ -z "$1" ]; then
         echo "Please enter mnt_dir, such as: fwq_mount ./mnt"
-        return
+        return 1
     fi
     if [ ! -d "$1" ]; then
         echo "Dir $1 not exist"
-        return
+        return 1
     fi
     local local_mount_dir=$1
     local user_name=$USER
     local fwq_user_folder_num=`ssh cooli7wa@192.168.8.66 "ls -a -1 /home/1t/aufs/user_data | grep $user_name | wc -l"`
+	local fwq_already_mount=`ssh cooli7wa@192.168.8.66 "cat /proc/mounts | grep -q "/user_data/mnt_$user_name"" && echo yes`
     local choose=0
 
-    if [ $fwq_user_folder_num == 3 ]; then
+    if [[ "z$fwq_user_folder_num" == "z3" && "z$fwq_already_mount" == "zyes" ]]; then
         echo "fwq already has this user's folder, please choose:"
         echo "1, mount this folder to $local_mount_dir"
         echo "2, clean and create a new folder, then mount"
@@ -125,14 +137,15 @@ function fwq_mount
     fi
 
     if [ $choose != 1 ]; then
-        _fwq_clean_folder "$user_name"
-        _fwq_make_folder "$user_name"
+        _fwq_clean_folder "$user_name" || return 1
+        _fwq_make_folder "$user_name" || return 1
     fi
     cat /proc/mounts | grep -q "cooli7wa@192.168.8.66.*`realpath $1`.*fuse.sshfs"
     if [ $? == 0 ]; then
         echo "umount local dir $local_mount_dir"
-        fusermount -u $1
+        fusermount -u $1 || return 1
     fi
     echo "mount local dir $local_mount_dir"
-    sshfs cooli7wa@192.168.8.66:/home/1t/aufs/user_data/mnt_$user_name $local_mount_dir
+    sshfs cooli7wa@192.168.8.66:/home/1t/aufs/user_data/mnt_$user_name $local_mount_dir || return 1
+	return 0
 }
