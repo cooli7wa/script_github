@@ -1,0 +1,2 @@
+# for aufs
+ALL ALL=NOPASSWD:/bin/mount, /bin/umount

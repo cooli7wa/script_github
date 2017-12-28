@@ -10,10 +10,26 @@ make_log_file="$log_folder/make_$time.log"
 project_list=(
 		"6797_svp_isee_n"
 		"6797_svp_isee_o"
+		"6739_svp_isee_n"
 )
 ost_list=(
 		"/home/1t/aufs/ost#trunk"
 )
+
+function clean_soter_if_need
+{
+	local rost=""
+	local rost_folder=""
+	for rost in ${ost_list[@]}
+	do
+		rost_folder=`echo $rost | cut -d '#' -f 1`
+		cd $rost_folder
+		if [ -d soter/obj ]; then
+			recho "clean soter in $rost, after fail"
+			rmake soter_clean
+		fi
+	done
+}
 
 # exec cmd and record log
 # $1: cmd
@@ -24,6 +40,7 @@ function rexec
 	eval $1 >> $2 2>&1
 	if [ $? != 0 ];then
 		echo "FAILED: $1" >> $flow_log_file
+		clean_soter_if_need
 		exit 1
 	fi
 }
@@ -77,9 +94,11 @@ do
 		recho "current project : $project"
 		# 1. make project
 		rexec "make $project" $make_log_file
-		# 2. checkout android
-		rexec "cd android/alps" $flow_log_file
-		rexec "git checkout ./" $flow_log_file
+		# 2. checkout android if need
+		if [ -L android ]; then
+			rexec "cd android/alps" $flow_log_file
+			rexec "git checkout ./" $flow_log_file
+		fi
 		# 3. make all
 		rexec "rmake all" $make_log_file
 		# 4. rm special preloader file
