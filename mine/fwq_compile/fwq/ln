@@ -1,11 +1,15 @@
 #!/bin/bash -
 
-#check -s
 echo "$*" | grep -q '^\-\w*s\w*\| -\w*s\w*'
 if [ $? == 0 ]; then
-    ln_real -r $*
-    exit $?
-else
-    ln_real $*
-    exit $?
+	echo "$*" | grep -q '^\-\w*r\w*\| -\w*r\w*'
+	if [ $? != 0 ]; then
+		echo "$*" | grep -q ' \.\.\/.* .*$'
+		if [ $? != 0 ]; then
+			ln_real -r $*
+			exit $?
+		fi
+	fi
 fi
+ln_real $*
+exit $?
