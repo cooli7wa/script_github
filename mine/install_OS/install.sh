@@ -26,7 +26,7 @@ function echo_color
 }
 
 
-packages="vim zlib1g-dev:i386 g++-multilib ssh make gawk g++ binutils pkg-config synaptic terminator ant u-boot-tools gperf bison doxygen libswitch-perl libxml2-utils libssl-dev xsel adb git sshfs repo"
+packages="vim zlib1g-dev:i386 g++-multilib ssh make gawk g++ binutils pkg-config synaptic terminator ant u-boot-tools gperf bison doxygen libswitch-perl libxml2-utils libssl-dev xsel adb git sshfs repo curl"
 
 echo_color RED "apt-get update .."
 sudo apt-get update
