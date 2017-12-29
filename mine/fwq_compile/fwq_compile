@@ -84,9 +84,9 @@ function _fwq_mount_folder
     ssh cooli7wa@192.168.8.66 " \
     cd /home/1t/aufs/user_data; \
     echo "mount mnt_$user_name"; \
-    sudo mount -t aufs -o dirs=./.container_$user_name:/home/1t/aufs/ost none ./mnt_$user_name || exit 1" || return 1
+    sudo mount -t overlay overlay -o upperdir=./.container_$user_name,lowerdir=/home/1t/aufs/ost,workdir=./.work_$user_name ./mnt_$user_name || exit 1" || return 1
     return 0
-#sudo mount -t overlay overlay -o upperdir=./.container_$user_name,lowerdir=/home/1t/aufs/ost,workdir=./.work_$user_name ./mnt_$user_name"
+#sudo mount -t aufs -o dirs=./.container_$user_name:/home/1t/aufs/ost none ./mnt_$user_name || exit 1" || return 1
 }
 function _fwq_clean_folder
 {
