@@ -34,7 +34,7 @@ function fwq
     done
     relate_dir=${current_dir#$mount_dir}
     echo "cd $remote_dir/$relate_dir; $cmd"
-    ssh -t cooli7wa@192.168.8.66 "cd $remote_dir/$relate_dir; $cmd"
+    ssh -t cooli7wa@192.168.8.66 "cd $remote_dir/$relate_dir; eval $cmd"
     return 0
 }
 function _fwq_rm_folder
