@@ -8,9 +8,10 @@ repo_log_file="$log_folder/repo_$time.log"
 make_log_file="$log_folder/make_$time.log"
 
 project_list=(
+		"6799_svp_isee_n"
+		"6739_svp_isee_n"
 		"6797_svp_isee_n"
 		"6797_svp_isee_o"
-		"6739_svp_isee_n"
 )
 ost_list=(
 		"/home/1t/aufs/ost#trunk"
@@ -86,6 +87,8 @@ do
 	rexec "repo forall -c git reset --hard ut_repo/$ost_version" $repo_log_file
 	rexec "repo forall -c git clean -df" $repo_log_file
 	rexec "repo sync -d" $repo_log_file
+	rexec "make customization-sync" $repo_log_file
+	rexec "make tools_manager-sync" $repo_log_file
 	recho "update repo ok"
 	# make all & rm special preloader file
 	recho "begin to make all & rm special preloader file"
