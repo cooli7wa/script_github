@@ -2,10 +2,13 @@
 
 time=`date +%Y%m%d_%H%M%S`
 date=`echo $time | cut -d '_' -f 1`
+lock_file="/home/1t/aufs/log/mount.lock"
 log_folder="/home/1t/aufs/log/$date"
+user_data_folder="/home/1t/aufs/user_data"
 flow_log_file="$log_folder/flow_$time.log"
 repo_log_file="$log_folder/repo_$time.log"
 make_log_file="$log_folder/make_$time.log"
+test_log_file="$log_folder/test_$time.log"
 
 project_list=(
 		"6799_svp_isee_n"
@@ -32,7 +35,7 @@ function clean_soter_if_need
 	done
 }
 
-# exec cmd and record log
+# exec cmd and record log, if failed clean soter
 # $1: cmd
 # $2: log_file
 function rexec
@@ -42,6 +45,7 @@ function rexec
 	if [ $? != 0 ];then
 		echo "FAILED: $1" >> $flow_log_file
 		clean_soter_if_need
+		echo "failed" > $lock_file
 		exit 1
 	fi
 }
@@ -57,12 +61,20 @@ mkdir -p $log_folder || exit 1
 > $flow_log_file || exit 1
 > $repo_log_file || exit 1
 > $make_log_file || exit 1
+> $test_log_file || exit 1
 recho "mkdir & create log file ok"
+
+# create mount.lock, and echo begin to it
+# user's fwq_mount will failed
+recho "create mount.lock, and echo compile to it.."
+recho "user's fwq_mount will failed"
+rexec "> $lock_file" $flow_log_file
+rexec "echo compile > $lock_file" $flow_log_file
 
 # umount & rm user_data
 # 1. umount all
 recho "begin to umount all"
-mount_folders=`cat /proc/mounts | grep "/home/1t/aufs/user_data/mnt_" | cut -d ' ' -f 2`
+mount_folders=`cat /proc/mounts | grep "$user_data_folder/mnt_" | cut -d ' ' -f 2`
 for folder in $mount_folders
 do
 	rexec "sudo umount $folder" $flow_log_file
@@ -70,8 +82,8 @@ done
 recho "umount ok"
 # 2. rm user_data
 recho "begin to rm user_data"
-rexec "rm -rf /home/1t/aufs/user_data" $flow_log_file
-rexec "mkdir /home/1t/aufs/user_data" $flow_log_file
+rexec "rm -rf $user_data_folder" $flow_log_file
+rexec "mkdir $user_data_folder" $flow_log_file
 recho "rm user_data ok"
 
 # update repo & make all & post flow
@@ -107,11 +119,53 @@ do
 		# 4. rm special preloader file
 		rexec "cd $ost_folder" $flow_log_file
 		product=`cat build/projects/$project.mk | grep "DEV_ANDROID_PROJECT" | sed -r 's/^.*full_(.*)-.*$/\1/g'`
-		rexec "rm -rf android/alps/out/target/product/$product/obj/PRELOADER_OBJ/obj/_home_1t*" $make_log_file
+		rexec "rm -rf android/alps/out/target/product/$product/obj/PRELOADER_OBJ/obj/*.flag" $make_log_file
 	done
 	recho "make all & rm special preloader file ok"
 	# soter_clean
 	rexec "rmake soter_clean" $make_log_file
 done
 recho "update repo & make all & post flow ok"
-recho "ALL SUCCESS!"
+recho "ALL MAKE SUCCESS!"
+
+# do simple test for user
+recho "begin to do simple test for user.."
+rexec "echo test > $lock_file" $flow_log_file
+recho "create test user folder.."
+rexec "cd $user_data_folder" $flow_log_file
+rexec "mkdir .container_test_user" $flow_log_file
+rexec "mkdir .work_test_user" $flow_log_file
+rexec "mkdir mnt_test_user" $flow_log_file
+recho "mount test user folder.."
+rexec "sudo mount -t overlay overlay -o upperdir=./.container_test_user,lowerdir=/home/1t/aufs/ost,workdir=./.work_test_user ./mnt_test_user" $flow_log_file
+rexec "cd mnt_test_user" $flow_log_file
+for project in ${project_list[@]}
+do
+	recho "current project : $project"
+	# 1. make project
+	rexec "make $project" $test_log_file
+	# 2. make preloader
+	rexec "make preloader" $test_log_file
+	# 3. make trustzone
+	rexec "make trustzone" $test_log_file
+	# 4. make build_android
+	#rexec "make build_android" $test_log_file
+	# 5. make soter
+	rexec "make soter" $test_log_file
+done
+recho "clean test user folder.."
+rexec "cd $user_data_folder" $flow_log_file
+rexec "sudo umount mnt_test_user" $flow_log_file
+rexec "rm -rf mnt_test_user" $flow_log_file
+rexec "rm -rf .container_test_user" $flow_log_file
+rexec "rm -rf .work_test_user" $flow_log_file
+recho "clean ok"
+recho "SIMPLE TEST SUCCESS!"
+
+# rm mount.lock, user can fwq_mount now
+recho "reset mount.lock, user can mount now.."
+rexec "> $lock_file" $flow_log_file
+
+# show cost time
+time_end=`date +%Y%m%d_%H%M%S`
+recho "Time: $time - $time_end"
