@@ -123,6 +123,12 @@ function fwq_mount
         echo "Dir $1 not exist"
         return 1
     fi
+    local fwq_status=`ssh cooli7wa@192.168.8.66 "cat /home/1t/aufs/log/mount.lock"`
+    if [ -n "$fwq_status" ]; then
+        echo "fwq not ready, please wait for a moment"
+        echo "current status: $fwq_status"
+        return 1
+    fi
     local local_mount_dir=$1
     local user_name=$USER
     local fwq_user_folder_num=`ssh cooli7wa@192.168.8.66 "ls -a -1 /home/1t/aufs/user_data | grep $user_name | wc -l"`
