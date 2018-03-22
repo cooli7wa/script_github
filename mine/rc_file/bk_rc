@@ -6,7 +6,7 @@ bk_files=(
 	~/.inputrc
 )
 
-bk_fold="/home/cooli7wa/Documents/script/script_github/mine/rc_file"
+bk_fold=`pwd`
 
 for file in ${bk_files[@]}
 do
