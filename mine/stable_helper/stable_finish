@@ -50,8 +50,7 @@ done
 echo_color YELLOW "Begin finish stable, please wait .."
 
 #clean folder
-check_and_remove "$TARGET_FOLDER_PATH/patch"
-mkdir -p "$TARGET_FOLDER_PATH/patch"
+check_and_remove_normal "$TARGET_FOLDER_PATH/patch"
 
 for i in ${ALL_PROJECT_FOLDER[@]}
 do

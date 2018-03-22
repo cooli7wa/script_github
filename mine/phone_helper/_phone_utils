@@ -3,6 +3,17 @@
 #SHOW_TRACE="yes"
 SHOW_TRACE="no"
 
+#normal file&folder list
+#when clean folder, if file&folder not in this list, should not clean
+NORMAL_FILE_FOLDER_LIST=(
+	common_patch
+	patch
+	stable.xml
+	.cur_project
+	ignore_patch_list.txt
+)
+
+
 #################
 # normal
 #################
@@ -100,6 +111,17 @@ function choose_one
 		fi
 	done
 	eval "$target_var=$target"
+}
+
+# rm normal file&folder in NORMAL_FILE_FOLDER_LIST
+function check_and_remove_normal
+{
+	for name in ${NORMAL_FILE_FOLDER_LIST[@]}
+	do
+		if [ -e "$1/$name" ];then
+			rm -rf "$1/$name"
+		fi
+	done
 }
 
 function check_and_remove

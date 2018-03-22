@@ -52,17 +52,18 @@ PHONE_NAME_FILE=$choosed_folder/phone_name
 XML_FILE=$choosed_folder/stable.xml
 PHONE_NAME=`cat $PHONE_NAME_FILE`
 PHONE_STABLE_VERSION=`grep -oP '<default revision="\Kstable_[\d.]+' $XML_FILE`
+PHONE_IGNORE_PATCH_LIST_FILE_PATH=$choosed_folder/ignore_patch_list.txt
 
 show_info $PHONE_NAME $PHONE_STABLE_VERSION
 
-smart_xml_change "$unchoosed_folder"
 mrepo abandon $PHONE_NAME
-rm $XML_FILE
-rm $PHONE_NAME_FILE
-
 if [ $clean_uncommit -eq 1 ];then
 	mrepo forall -c git reset
 	mrepo forall -c git clean -df
 fi
+smart_xml_change "$unchoosed_folder"
+rm $XML_FILE
+rm $PHONE_NAME_FILE
+rm -rf $PHONE_IGNORE_PATCH_LIST_FILE_PATH
 
 echo_color GREEN "Clean success"

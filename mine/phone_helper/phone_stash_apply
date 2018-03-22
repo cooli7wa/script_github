@@ -4,7 +4,7 @@ REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
 CUSTOM_FOLDER_PATH=$REPO_ROOT/customization/
 NEW_FOLDER_PATH=$CUSTOM_FOLDER_PATH/new
 VENDOR_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor
-ORIGIN_XML_FILE=`cd $REPO_ROOT; realpath --relative-to=./ .repo/manifest.xml`
+ORIGIN_XML_FILE=`cd $REPO_ROOT; ls -al .repo/manifest.xml | grep -oP '\-\> \K.*$' | sed 's:^:.repo/:g'`
 
 source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
 
@@ -55,12 +55,14 @@ PHONE_NAME_FILE_PATH=$TARGET_FOLDER_PATH/stash/phone_name
 XML_FILE_PATH=$TARGET_FOLDER_PATH/stash/stable.xml
 PHONE_NAME=`cat $PHONE_NAME_FILE_PATH`
 PHONE_STABLE_VERSION=`grep -oP '<default revision="\Kstable_[\d.]+' $XML_FILE_PATH`
+PHONE_IGNORE_PATCH_LIST_FILE_PATH=$TARGET_FOLDER_PATH/ignore_patch_list.txt
+ORIGIN_PHONE_IGNORE_PATCH_LIST_FILE_PATH=$TARGET_FOLDER_PATH/stash/ignore_patch_list.txt
 
 show_info $PHONE_NAME $PHONE_STABLE_VERSION
 
 ####################################################################################
 
-check_xml_projects $XML_FILE_PATH $ORIGIN_XML_FILE
+#check_xml_projects $XML_FILE_PATH $ORIGIN_XML_FILE
 
 ####################################################################################
 
@@ -73,6 +75,9 @@ mrepo forall -c git clean -df
 #restore xml & phone_name
 cp $XML_FILE_PATH $TARGET_FOLDER_PATH
 cp $PHONE_NAME_FILE_PATH $TARGET_FOLDER_PATH
+if [ -e $ORIGIN_PHONE_IGNORE_PATCH_LIST_FILE_PATH ]; then
+	cp -rf $ORIGIN_PHONE_IGNORE_PATCH_LIST_FILE_PATH $PHONE_IGNORE_PATCH_LIST_FILE_PATH
+fi
 
 #prepare branch
 mrepo init -m ../../customization/${choosed_folder##*/}/stable.xml
@@ -93,12 +98,15 @@ if [ -e $TARGET_FOLDER_PATH/stash/patch ];then
 		if [ -d $project_folder/commit ];then
 			ls -1 $project_folder/commit | while read line
 			do
-				git am $project_folder/commit/$line
+				git am --ignore-whitespace $project_folder/commit/$line
 				if [ -d $project_folder/tag ];then
 					commit_id=`cat $project_folder/commit/$line | sed 1q | grep -oP '^From \K[0-9a-z]+'`
-					tag_name=`cd $project_folder/tag && grep -r $commit_id | cut -d ':' -f 1`
-					if [ -n "$tag_name" ];then
-						git tag $tag_name
+					tag_list=(`cd $project_folder/tag && grep -r $commit_id | cut -d ':' -f 1`)
+					if [ ${#tag_list[@]} -ne 0 ];then
+						for each_tag in ${tag_list[@]}
+						do
+							git tag $each_tag
+						done
 					fi
 				fi
 			done

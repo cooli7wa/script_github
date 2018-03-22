@@ -1,0 +1,129 @@
+#!/bin/bash -
+
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+CUSTOM_FOLDER_PATH=$REPO_ROOT/customization
+COMMON_FOLDER_PATH=$CUSTOM_FOLDER_PATH/common
+VENDOR_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor
+TARGET_FOLDER_PATH=$VENDOR_FOLDER_PATH
+TMP_FILE_PATH=/tmp/phone_pick_common_patch.tmp
+
+PHONE_NAME_FILE_PATH=$TARGET_FOLDER_PATH/phone_name
+PHONE_XML_FILE_PATH=$TARGET_FOLDER_PATH/stable.xml
+
+source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
+
+####################################################################################
+
+#check phone_name_file & phone_xml_file
+if [ ! -e $PHONE_NAME_FILE_PATH ]; then
+	echo_color RED "phone_name_file: $PHONE_NAME_FILE_PATH missing, please check"
+	exit 1
+fi
+
+if [ ! -e $PHONE_XML_FILE_PATH ]; then
+	echo_color RED "phone_xml_file: $PHONE_XML_FILE_PATH missing, please check"
+	exit 1
+fi
+
+PHONE_NAME=`cat $PHONE_NAME_FILE_PATH`
+PHONE_STABLE_NAME=`grep -oP '<default revision=\"\K[^"]+' $PHONE_XML_FILE_PATH`
+
+ALL_PROJECT_FOLDER=`repo list | cut -d ' ' -f 1`
+#check stable & phone branch
+for i in ${ALL_PROJECT_FOLDER[@]}
+do
+    cd $REPO_ROOT/$i
+	_all_branches=`git branch`
+	echo "$_all_branches" | grep -q "^* $PHONE_NAME$"
+	if [ $? != 0 ];then
+        echo_color RED "\"$i\", not on \"$PHONE_NAME\" branch, please check"
+		exit 1
+	fi
+	echo "$_all_branches" | grep -q "^  $PHONE_STABLE_NAME$"
+    if [ $? != 0 ];then
+        echo_color RED "\"$i\", not has \"$PHONE_STABLE_NAME\" branch, please check"
+        exit 1
+    fi
+done
+
+PHONE_IGNORE_PATCH_LIST_FILE_PATH=$VENDOR_FOLDER_PATH/ignore_patch_list.txt
+
+####################################################################################
+
+show_info $PHONE_NAME $PHONE_STABLE_NAME
+
+####################################################################################
+
+continue_pick=0
+
+# check tmp file
+if [ -e $TMP_FILE_PATH ]; then
+	echo_color YELLOW "$TMP_FILE_PATH already exist, continue? (Y/n)"
+	read continue_pick
+    if [[ ! "z$continue_pick" =~ ^z[nN][oO]?$ ]];then
+		continue_pick=1
+	else
+		continue_pick=0
+	fi
+fi
+
+if [ $continue_pick == 0 ]; then
+	# exact all stable patches
+	echo_color YELLOW "exact all pathes not in phone.."
+	> $TMP_FILE_PATH
+	for i in ${ALL_PROJECT_FOLDER[@]}
+	do
+		cd $REPO_ROOT/$i
+		_commits=`git log --reverse --cherry-pick --right-only $PHONE_NAME...$PHONE_STABLE_NAME --pretty=format:"%H %an %s"`
+		if [ -n "$_commits" ]; then
+			echo "$_commits" | while read line
+			do
+				echo $i $line >> $TMP_FILE_PATH
+			done
+		fi
+	done
+
+	cat $TMP_FILE_PATH | while read line
+	do
+		_project=`echo $line | cut -d ' ' -f 1`
+		_commit_id=`echo $line | cut -d ' ' -f 2`
+		_author=`echo $line | cut -d ' ' -f 3`
+		_message=`echo $line | cut -d ' ' -f 4-`
+		cd $REPO_ROOT/$_project
+		# del same commit which cherry-pick not identify
+		_log=`git log --author="$_author" --grep="$_message"`
+		if [ -n "$_log" ]; then
+			sed -i "/$_commit_id/d" $TMP_FILE_PATH
+		fi
+		# del ignore commit
+		if [ -e $PHONE_IGNORE_PATCH_LIST_FILE_PATH ]; then
+			cat $PHONE_IGNORE_PATCH_LIST_FILE_PATH | grep -q "$_project [a-zA-Z0-9]\+ $_author $_message"
+			if [ $? == 0 ]; then
+				sed -i "/$_commit_id/d" $TMP_FILE_PATH
+			fi
+		fi
+	done
+
+	echo_color YELLOW "exact finish"
+fi
+
+# cherry-pick
+echo_color YELLOW "begin to cherry-pick.."
+cat $TMP_FILE_PATH | while read line
+do
+	_project=`echo $line | cut -d ' ' -f 1`
+	_commit_id=`echo $line | cut -d ' ' -f 2`
+	_message=`echo $line | cut -d ' ' -f 4-`
+	sed -i "/$_commit_id/d" $TMP_FILE_PATH
+	cd $REPO_ROOT/$_project
+	echo_color YELLOW "picking: $_project, $_message.."
+	_pick_msg=`git cherry-pick $_commit_id`
+	if [ $? != 0 ]; then
+		echo "$_pick_msg" | grep -q "nothing to commit" || exit 1
+		echo_color BLUE "find empty commit: $line, add it to phone ignore list"
+		echo $line >> $PHONE_IGNORE_PATCH_LIST_FILE_PATH
+	fi
+done || exit 1
+echo_color YELLOW "cherry-pick finish"
+rm -rf $TMP_FILE_PATH
+echo_color GREEN "all ok, please check and use \"make phone_finish\" to exact patches to custom folder"

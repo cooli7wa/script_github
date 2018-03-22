@@ -1,0 +1,211 @@
+#!/bin/bash -
+
+#################
+# normal
+#################
+
+function echo_color
+{
+	local color=$1
+	local message=$2
+	local pre_color=""
+	local post_color='\033[0m'
+
+	case "$color" in
+	RED)
+		pre_color='\033[31m';;
+	GREEN)
+		pre_color='\033[32m';;
+	YELLOW)
+		pre_color='\033[33m';;
+	BLUE)
+		pre_color='\033[34m';;
+	NO)
+		pre_color='\033[0m';;
+	*)
+		pre_color='\033[0m';;
+	esac
+
+	echo -e $pre_color$message$post_color
+}
+
+function choose_one
+{
+	local all_chooses=$1
+	local target_var=$2
+	local choose_list=""
+	local input_chooses=""
+	local input_choose_list=""
+	local input=""
+	local target=""
+	local c=""
+	local i=0
+	local d=""
+	local j=0
+
+	for c in $all_chooses
+	do
+		((i++))
+		choose_list[$i]=$c
+		echo "$i $c"
+	done
+
+	while [ 1 ]
+	do
+		echo_color YELLOW "Please input number or input keywords: "
+		read input
+		if [[ $input =~ ^[0-9]+$ ]]; then
+			if [ $input -gt $i ]; then
+				echo_color RED "$input > $i"
+				continue
+			else
+				target=${choose_list[$input]}
+				break
+			fi
+		else
+			if [ -z "$input" ]; then
+				echo_color RED "no input"
+				continue
+			fi
+			input_chooses=`echo -e "$all_chooses" | grep $input`
+			if [ -z "$input_chooses" ]; then
+				echo_color RED "No choose match"
+				continue
+			fi
+			j=0
+			for d in $input_chooses
+			do
+				((j++))
+				input_choose_list[$j]=$d
+				echo "$j $d"
+			done
+			echo_color YELLOW "Please input number: "
+			read input
+			if [[ $input =~ ^[0-9]+$ ]]; then
+				if [ $input -gt $j ]; then
+					echo_color RED "$input > $j"
+					continue
+				else
+					target=${input_choose_list[$input]}
+					break
+				fi
+			else
+				echo_color RED "Should input number only"
+				continue
+			fi
+			break
+		fi
+	done
+	eval "$target_var=$target"
+}
+
+function check_and_remove
+{
+	if [ -e "$1" ];then
+		rm -rf "$1"
+	fi
+}
+
+function check_and_mkdir
+{
+	if [ ! -d "$1" ];then
+		mkdir -p "$1"
+	fi
+}
+
+function del_empty_folder
+{
+	find "$1" -mindepth 1 -maxdepth 1 -type d | while read -r dir
+	do
+		if [[ -z "$(find "$dir" -mindepth 1 -type f)" ]] >/dev/null
+		then
+			rm -rf "$dir"
+		fi
+		if [ -d "$dir" ]
+		then
+			del_empty_folder "$dir"
+		fi
+	done
+}
+
+#################
+# special
+#################
+
+# del interval's context
+# $1 reg_begin
+# $2 tag_begin:tag_end
+# $3 file
+# $4 del_tag, if 1, will del begin&end tags
+function del_interval_context
+{
+	reg_begin=$1
+	tag_begin=${2%:*}
+	tag_end=${2#*:}
+	file=$3
+	del_tag=$4
+
+	if [ $del_tag -eq 1 ]; then
+		sed -i -e "/$tag_begin.*$reg_begin/ba;b" -e :a -e "/$tag_end/!{N;ba};d" $file
+	else
+		sed -i -n -e "/$tag_begin.*$reg_begin/{p;ba};{p;b}" -e :a -e "/$tag_end/!{n;ba};p" $file
+	fi
+}
+
+# check var if null
+# $1 var1:var2:var3...
+function check_var_null
+{
+	vars=${@//:/ }
+	for var in ${vars[@]}
+	do
+		if [ -z "`eval echo \\$$var`" ]; then
+			echo_color RED "$var is null, please check"
+			exit 1
+		fi
+	done
+}
+
+# del line in folder
+# $1 line keywords
+# $2 folder
+function del_line_in_folder
+{
+	keywords=$1
+	folder=$2
+
+	for keyword in $keywords
+	do
+		sed -i "/$keyword/d" $folder/*
+	done
+}
+
+# del file in folder
+# $1 file names
+# $2 folder
+function del_file_in_folder
+{
+	files=$1
+	folder=$2
+
+	for file in $files
+	do
+		rm -rf $folder/$file
+	done
+}
+
+# exact line from file to file
+# $1 line keywords
+# $2 from_file
+# $3 to_file
+function exact_define_line_from_file
+{
+	keywords=$1
+	from_file=$2
+	to_file=$3
+
+	for keyword in $keywords
+	do
+		grep "define[ \t]\+$keyword" $from_file >> $to_file
+	done
+}

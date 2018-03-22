@@ -8,7 +8,7 @@ TARGET_FOLDER_PATH=$CUSTOM_FOLDER_PATH/new
 TMP_FILE_PATH=/tmp/phone_start.tmp
 PHONE_NAME_FILE_PATH=$TARGET_FOLDER_PATH/phone_name
 XML_FILE_PATH=$TARGET_FOLDER_PATH/stable.xml
-ORIGIN_XML_FILE=`cd $REPO_ROOT; realpath --relative-to=./ .repo/manifest.xml`
+ORIGIN_XML_FILE=`cd $REPO_ROOT; ls -al .repo/manifest.xml | grep -oP '\-\> \K.*$' | sed 's:^:.repo/:g'`
 PHONE_NAME=""
 PHONE_STABLE_NAME=""
 
@@ -20,6 +20,10 @@ echo_color YELLOW "Please input phone name: "
 read PHONE_NAME
 if [ -z "$PHONE_NAME" ];then
 	echo_color RED "Phone name is null"
+	exit 1
+fi
+if ! echo $PHONE_NAME | grep -q '^[a-zA-Z0-9_.]\+$'; then
+	echo_color RED "Phone name should only include these characters, [a-zA-Z0-9_.]"
 	exit 1
 fi
 if [ -d $VENDOR_FOLDER_PATH ];then
@@ -40,7 +44,7 @@ show_info $PHONE_NAME $PHONE_STABLE_NAME
 
 ####################################################################################
 
-check_xml_projects $COMMON_FOLDER_PATH/$PHONE_STABLE_NAME/stable.xml $ORIGIN_XML_FILE
+#check_xml_projects $COMMON_FOLDER_PATH/$PHONE_STABLE_NAME/stable.xml $ORIGIN_XML_FILE
 
 need_stash=0
 auto_apply=0
@@ -81,11 +85,12 @@ mrepo forall -c git checkout -b $PHONE_NAME
 #add stable common patches for phone
 if [ -e $COMMON_FOLDER_PATH/$PHONE_STABLE_NAME/common_patch ];then
 	cd $COMMON_FOLDER_PATH/$PHONE_STABLE_NAME/common_patch
-	find ./ -mindepth 1 -maxdepth 1 -type d | while read -r dir
+	find -type d -name "commit" | sed 's/commit$//g' | while read -r dir
 	do
+		project_folder=$COMMON_FOLDER_PATH/$PHONE_STABLE_NAME/common_patch/$dir
 		cd $REPO_ROOT/$dir
-		if [ -d $COMMON_FOLDER_PATH/$PHONE_STABLE_NAME/common_patch/$dir/commit ];then
-			git am $COMMON_FOLDER_PATH/$PHONE_STABLE_NAME/common_patch/$dir/commit/*
+		if [ -d $project_folder/commit ];then
+			git am --ignore-whitespace $project_folder/commit/*
 		fi
 	done
 fi

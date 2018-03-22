@@ -12,6 +12,15 @@ source $PHONE_HELPER_FOLDER_PATH/_phone_utils
 echo_color YELLOW "Enter stable version: "
 read STABLE_NAME
 
+if [ -z "$STABLE_NAME" ];then
+        echo_color RED "Stable name is null"
+        exit 1
+fi
+if ! echo $STABLE_NAME | grep -q '^[a-zA-Z0-9_.]\+$'; then
+        echo_color RED "Stable name should only include these characters, [a-zA-Z0-9_.]"
+        exit 1
+fi
+
 STABLE_VERSION=`echo $STABLE_NAME | cut -d '_' -f -2`
 
 ORIGIN_TOP_XML_FILE_PATH=$MANIFEST_FOLDER_PATH/all_$STABLE_VERSION.xml

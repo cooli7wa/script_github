@@ -39,7 +39,7 @@ if [ -e $TARGET_FOLDER_PATH/patch ];then
 		cd $REPO_ROOT/$dir
 		ls -1 $project_folder/commit | while read line
 		do
-			git am $project_folder/commit/$line
+			git am --ignore-whitespace $project_folder/commit/$line
 			if [ -d $project_folder/tag ];then
 				commit_id=`cat $project_folder/commit/$line | sed 1q | grep -oP '^From \K[0-9a-z]+'`
 				tag_name=`cd $project_folder/tag && grep -r $commit_id | cut -d ':' -f 1`

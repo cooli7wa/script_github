@@ -44,6 +44,8 @@ XML_FILE_PATH=$choosed_folder/stable.xml
 PHONE_NAME=`cat $PHONE_NAME_FILE_PATH`
 TARGET_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME
 PHONE_STABLE_VERSION=`grep -oP '<default revision="\Kstable_[\d.]+' $XML_FILE_PATH`
+PHONE_IGNORE_PATCH_LIST_FILE_PATH=$choosed_folder/ignore_patch_list.txt
+ORIGIN_PHONE_IGNORE_PATCH_LIST_FILE_PATH=$TARGET_FOLDER_PATH/ignore_patch_list.txt
 
 show_info $PHONE_NAME $PHONE_STABLE_VERSION
 
@@ -76,8 +78,7 @@ done
 echo_color YELLOW "Begin finish phone, please wait .."
 
 #clean folder
-check_and_remove "$TARGET_FOLDER_PATH"
-mkdir -p "$TARGET_FOLDER_PATH"
+check_and_remove_normal "$TARGET_FOLDER_PATH"
 
 for i in ${ALL_PROJECT_FOLDER[@]}
 do
@@ -112,6 +113,9 @@ done
 del_empty_folder "$TARGET_FOLDER_PATH/patch"
 
 cp $REPO_ROOT/.cur_project $TARGET_FOLDER_PATH
+if [ -e $PHONE_IGNORE_PATCH_LIST_FILE_PATH ]; then
+	mv $PHONE_IGNORE_PATCH_LIST_FILE_PATH $ORIGIN_PHONE_IGNORE_PATCH_LIST_FILE_PATH
+fi
 
 #clean all
 mrepo forall -c git reset --hard

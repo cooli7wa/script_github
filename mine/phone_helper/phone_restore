@@ -4,7 +4,7 @@ REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
 CUSTOM_FOLDER_PATH=$REPO_ROOT/customization
 VENDOR_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor
 TMP_FILE_PATH=/tmp/phone_restore.tmp
-ORIGIN_XML_FILE=`cd $REPO_ROOT; realpath --relative-to=./ .repo/manifest.xml`
+ORIGIN_XML_FILE=`cd $REPO_ROOT; ls -al .repo/manifest.xml | grep -oP '\-\> \K.*$' | sed 's:^:.repo/:g'`
 PHONE_NAME=""
 
 source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
@@ -22,12 +22,14 @@ echo_color YELLOW "Please choose phone: "
 choose_one "$CURRENT_VENDOR_PHONE_LIST" PHONE_NAME
 
 PHONE_STABLE_VERSION=`grep -oP '<default revision="\Kstable_[\d.]+' $CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME/stable.xml`
+PHONE_IGNORE_PATCH_LIST_FILE_PATH=$VENDOR_FOLDER_PATH/ignore_patch_list.txt
+ORIGIN_PHONE_IGNORE_PATCH_LIST_FILE_PATH=$VENDOR_FOLDER_PATH/$PHONE_NAME/ignore_patch_list.txt
 
 show_info $PHONE_NAME $PHONE_STABLE_VERSION
 
 ####################################################################################
 
-check_xml_projects $CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME/stable.xml $ORIGIN_XML_FILE
+#check_xml_projects $CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME/stable.xml $ORIGIN_XML_FILE
 
 for_pick_only=0
 need_checkout=1
@@ -51,6 +53,7 @@ echo_color YELLOW "(If yes, .cur_project/phone_name/stable.xml will not change)"
 read choose
 if [[ "z$choose" =~ ^z[yY](es)?$ ]];then
 	for_pick_only=1
+	check_xml_projects $CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME/stable.xml $ORIGIN_XML_FILE
 fi
 
 if [ $for_pick_only -eq 1 ];then
@@ -82,6 +85,9 @@ XML_FILE_PATH=$VENDOR_FOLDER_PATH/stable.xml
 XML_FILE_PATH_UNDER_CUSTOM=vendor/stable.xml
 cp $TARGET_FOLDER_PATH/stable.xml $XML_FILE_PATH
 echo $PHONE_NAME > $PHONE_NAME_FILE_PATH
+if [ -e $ORIGIN_PHONE_IGNORE_PATCH_LIST_FILE_PATH ]; then
+	cp -rf $ORIGIN_PHONE_IGNORE_PATCH_LIST_FILE_PATH $PHONE_IGNORE_PATCH_LIST_FILE_PATH
+fi
 fi
 
 ####################################################################################
@@ -111,12 +117,15 @@ if [ -e $TARGET_FOLDER_PATH/patch ];then
 		cd $REPO_ROOT/$dir
 		ls -1 $project_folder/commit | while read line
 		do
-			git am $project_folder/commit/$line
+			git am --ignore-whitespace $project_folder/commit/$line
 			if [ -d $project_folder/tag ];then
 				commit_id=`cat $project_folder/commit/$line | sed 1q | grep -oP '^From \K[0-9a-z]+'`
-				tag_name=`cd $project_folder/tag && grep -r $commit_id | cut -d ':' -f 1`
-				if [ -n "$tag_name" ];then
-					git tag $tag_name
+				tag_list=(`cd $project_folder/tag && grep -r $commit_id | cut -d ':' -f 1`)
+				if [ ${#tag_list[@]} -ne 0 ];then
+					for each_tag in ${tag_list[@]}
+					do
+						git tag $each_tag
+					done
 				fi
 			fi
 		done

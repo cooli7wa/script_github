@@ -1,0 +1,23 @@
+sepolicy_keywords=(
+	teei
+	\\but_
+	init_thh
+	teei_daemon
+	microtrust
+)
+sepolicy_files=(
+	teei_daemon.te
+	ut_ta_manager_service.te
+	init_thh.te
+)
+atf_plat_files=(
+	plat_teei.c
+	include/plat_teei_inner.h
+	include/plat_teei.h
+)
+pl_files=(
+	tz_teei.c
+	inc/imsg_log.h
+	inc/tz_teei.h
+	inc/utos_version.h
+)

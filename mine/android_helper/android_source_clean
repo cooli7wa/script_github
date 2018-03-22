@@ -1,0 +1,67 @@
+#/bin/bash -
+
+# $1 android_alps_folder
+
+REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
+
+if [ -n "$REPO_ROOT" ]; then
+	source $REPO_ROOT/tools_manager/android_helper/_utils
+	source $REPO_ROOT/tools_manager/android_helper/_clean_config
+else
+	source _utils
+	source _clean_config
+fi
+
+ANDROID_ALPS_PATH=$1
+check_var_null ANDROID_ALPS_PATH
+
+KERNEL_VERSION=`ls -1 $ANDROID_ALPS_PATH | grep kernel-`
+PLATFORM=`ls -1 $ANDROID_ALPS_PATH/device/mediatek | grep -oP 'mt\K[0-9]+$'`
+ATF_VERSION=`cat $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/custom/build/project/mt$PLATFORM.mk | grep -oP 'MTK_ATF_VERSION=\K.*$'`
+check_var_null KERNEL_VERSION:PLATFORM:ATF_VERSION
+
+echo_color BLUE "============ INFO ============="
+echo_color BLUE "ANDROID_ALPS_PATH: $ANDROID_ALPS_PATH"
+echo_color BLUE "KERNEL_VERSION: $KERNEL_VERSION"
+echo_color BLUE "ATF_VERSION: $ATF_VERSION"
+echo_color BLUE "PLATFORM: $PLATFORM"
+echo_color BLUE "==============================="
+
+###################################################################
+
+echo_color GREEN "==== CLEAN BEGIN ===="
+# device
+#	sepolicy
+del_line_in_folder "${sepolicy_keywords[*]}" $ANDROID_ALPS_PATH/device/mediatek/sepolicy/bsp/non_plat
+del_file_in_folder "${sepolicy_files[*]}" $ANDROID_ALPS_PATH/device/mediatek/sepolicy/bsp/non_plat
+check_and_mkdir $ANDROID_ALPS_PATH/device/mediatek/common/sepolicy
+echo_color GREEN "clean sepolicy done"
+#	device.mk
+del_interval_context "MICROTRUST_TEE_SUPPORT" "ifeq:endif" $ANDROID_ALPS_PATH/device/mediatek/mt$PLATFORM/device.mk 1
+del_interval_context "MICROTRUST_TEE_SUPPORT" "ifeq:endif" $ANDROID_ALPS_PATH/device/mediatek/common/device.mk 0
+echo_color GREEN "clean device.mk done"
+# kernel
+rm -rf $ANDROID_ALPS_PATH/kernel-4.4/drivers/misc/mediatek/teei
+echo_color GREEN "clean linux kernel done"
+# atf
+#	spd
+rm -rf $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/atf/v1.3/services/spd/teeid
+echo_color GREEN "clean atf spd done"
+#	plat
+cp $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/atf/$ATF_VERSION/plat/mediatek/mt$PLATFORM/include/plat_teei.h plat_teei_restore.h
+echo_color GREEN "save atf plat_teei.h done"
+del_file_in_folder "${atf_plat_files[*]}" $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/atf/$ATF_VERSION/plat/mediatek/mt$PLATFORM
+echo_color GREEN "clean atf done"
+# preloader
+cp $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/bootable/bootloader/preloader/platform/mt$PLATFORM/src/security/trustzone/inc/tz_teei.h tz_teei_restore.h
+echo_color GREEN "save pl tz_teei.h done"
+del_file_in_folder "${pl_files[*]}" $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/bootable/bootloader/preloader/platform/mt$PLATFORM/src/security/trustzone
+echo_color GREEN "clean pl done"
+# vendor/microtrust
+rm -rf $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/microtrust/source/platform/microtrust.rc
+rm -rf $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/microtrust/source/platform/mt$PLATFORM/external
+rm -rf $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/microtrust/source/platform/mt$PLATFORM/teei/*
+rm -rf $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/microtrust/source/common/*
+echo_color GREEN "clean vendor/microtrust done"
+
+echo_color GREEN "==== CLEAN DONE ===="
