@@ -1,0 +1,16 @@
+#!/bin/bash -
+
+# input should be abs path
+function fix_folder_path
+{
+	local target_folder=$1
+	local need_fix_folders=$2
+
+	check_and_mkdir $target_folder
+    for p in $need_fix_folders
+    do
+        echo "fix path: $p"
+        cp -rf $p/* $target_folder
+        rm -rf $p
+    done
+}

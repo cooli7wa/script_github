@@ -20,6 +20,14 @@ function echo_color
 		pre_color='\033[33m';;
 	BLUE)
 		pre_color='\033[34m';;
+	SKYBLUE)
+		pre_color='\033[36m';;
+	PURPLE)
+		pre_color='\033[35m';;
+	WHITE)
+		pre_color='\033[37m';;
+	BLACK)
+		pre_color='\033[30m';;
 	NO)
 		pre_color='\033[0m';;
 	*)
@@ -134,36 +142,150 @@ function del_empty_folder
 
 # del interval's context
 # $1 reg_begin
-# $2 tag_begin:tag_end
+# $2 tag_begin:tag_end[:tag_stop]
 # $3 file
-# $4 del_tag, if 1, will del begin&end tags
+# $4 del_tag
+#    0, not del all tags
+#    1, del all tags
+#    2, del begin tag, not del end tag
 function del_interval_context
 {
-	reg_begin=$1
-	tag_begin=${2%:*}
-	tag_end=${2#*:}
-	file=$3
-	del_tag=$4
+	local reg_begin=$1
+	local tag_begin=`echo $2 | cut -d ':' -f 1`
+	local tag_end=`echo $2 | cut -d ':' -f 2`
+	local tag_loop=`echo $2 | cut -d ':' -f 3`
+	local tag_stop=`echo $2 | cut -d ':' -f 4`
+	local file=$3
+	local del_tag=$4
+	local tmp_file='del_interval_context.tmp'
 
-	if [ $del_tag -eq 1 ]; then
-		sed -i -e "/$tag_begin.*$reg_begin/ba;b" -e :a -e "/$tag_end/!{N;ba};d" $file
-	else
-		sed -i -n -e "/$tag_begin.*$reg_begin/{p;ba};{p;b}" -e :a -e "/$tag_end/!{n;ba};p" $file
-	fi
+#	if [ $del_tag -eq 0 ]; then
+#		sed -i -n -e "/$tag_begin.*$reg_begin/{p;ba};{p;b}" -e :a -e "/$tag_end/!{n;ba};p" $file
+#	elif [ $del_tag -eq 1 ]; then
+#		sed -i -e "/$tag_begin.*$reg_begin/ba;b" -e :a -e "/$tag_end/!{N;ba};d" $file
+#	elif [ $del_tag -eq 2 ]; then
+#		sed -i -n -e "/$tag_begin.*$reg_begin/{ba};{p;b}" -e :a -e "/$tag_end/!{n;ba};p" $file
+#	fi
+	awk 'BEGIN{
+			reg_begin="'"$reg_begin"'";
+		    tag_begin="'"$tag_begin"'";
+			tag_end="'"$tag_end"'";
+			tag_loop="'"$tag_loop"'";
+			tag_stop="'"$tag_stop"'";
+			del_tag="'"$del_tag"'";
+			n=split(tag_stop, stop_tags, "@");
+			eprint=1;
+			find=0;start=0;end=0;nloop=0;}
+		{
+			if (find == 0 && match($0, tag_begin".*"reg_begin)) {
+				if (del_tag == 1 || del_tag == 2) {
+					eprint = 0;
+				}
+				find = 1;
+				start = 1;
+				nloop = 1;
+			}
+			if (find == 1 && start == 0 && match($0, "^[ \t]*"tag_loop)) {
+				nloop = nloop + 1;
+			}
+			if (nloop == 1 && find == 1 && start == 0 && del_tag == 2) {
+				for (i=1; i<=n; i++) {
+					if (match($0, stop_tags[i])) {
+						eprint = 1;
+						end = 1;
+						break;
+					}
+				}
+			}
+			if (find == 1 && match($0, tag_end)) {
+				if (nloop == 1) {
+					if (del_tag == 0 || del_tag == 2) {
+						eprint = 1;
+					}
+					end = 1;
+				} else {
+					nloop = nloop - 1;
+				}
+			}
+			if (eprint) {print}
+			if (start) {eprint=0;start=0}
+			if (end) {eprint=1;end=0;find=0;nloop=0}
+		}
+	' $file > $tmp_file
+	mv $tmp_file $file
+}
+
+# def all mark_contexts in file
+# $1 file
+function del_mark_context
+{
+	local file=$1
+
+	for s in ${mark_context[@]}
+    do
+        local reg=`echo $s | cut -d '_' -f 1`
+        local tag=`echo $s | cut -d '_' -f 2`
+		local del_tag=`echo $s | cut -d '_' -f 3`
+        del_interval_context "$reg" "$tag" $file $del_tag
+    done
+}
+
+# del all block_contexts in file
+# $1 file
+function del_block_context
+{
+	local file=$1
+
+	for s in ${block_context[@]}
+    do
+        local reg=`echo $s | cut -d '_' -f 1`
+        local tag=`echo $s | cut -d '_' -f 2`
+		local del_tag=`echo $s | cut -d '_' -f 3`
+        del_interval_context "$reg" "$tag" $file $del_tag
+    done
+}
+
+# del special lines in file
+# $1 file
+function del_special_line
+{
+	local file=$1
+	for s in "${special_line[@]}"
+    do
+		local special_file=${s%%@*}
+		local reg=${s##*@}
+		echo $file | grep -q "$special_file"
+		if [ $? -eq 0 ]; then
+			sed -i "/$reg/d" $file
+		fi
+    done
+}
+
+function clean_file_flow
+{
+	local file=$1
+	del_mark_context $file
+	del_block_context $file
+	del_line_in_file "${teei_keywords[*]}" $file
+	del_special_line $file
 }
 
 # check var if null
 # $1 var1:var2:var3...
 function check_var_null
 {
-	vars=${@//:/ }
+	local vars=${@//:/ }
+	local ret=0
+
 	for var in ${vars[@]}
 	do
 		if [ -z "`eval echo \\$$var`" ]; then
 			echo_color RED "$var is null, please check"
-			exit 1
+			ret=1
 		fi
 	done
+
+	return $ret
 }
 
 # del line in folder
@@ -171,12 +293,26 @@ function check_var_null
 # $2 folder
 function del_line_in_folder
 {
-	keywords=$1
-	folder=$2
+	local keywords=$1
+	local folder=$2
 
 	for keyword in $keywords
 	do
 		sed -i "/$keyword/d" $folder/*
+	done
+}
+
+# del line in file
+# $1 line keywords
+# $2 file
+function del_line_in_file
+{
+	local keywords=$1
+	local file=$2
+
+	for keyword in $keywords
+	do
+		sed -i "/$keyword/d" $file
 	done
 }
 
@@ -185,8 +321,8 @@ function del_line_in_folder
 # $2 folder
 function del_file_in_folder
 {
-	files=$1
-	folder=$2
+	local files=$1
+	local folder=$2
 
 	for file in $files
 	do
@@ -194,18 +330,30 @@ function del_file_in_folder
 	done
 }
 
-# exact line from file to file
-# $1 line keywords
-# $2 from_file
-# $3 to_file
-function exact_define_line_from_file
+# check file or folder exist
+# $1 folders
+function check_exist
 {
-	keywords=$1
-	from_file=$2
-	to_file=$3
+	local target=$1
+	local ret=0
 
-	for keyword in $keywords
+	for t in $target
 	do
-		grep "define[ \t]\+$keyword" $from_file >> $to_file
+		if [ ! -e $t ];then
+			echo_color RED "$t not exist!"
+			ret=1
+		fi
 	done
+	return $ret
+}
+
+# exact define list from file to file
+# $1 from_file
+# $2 to_file
+function exact_define_list
+{
+	local from_file=$1
+	local to_file=$2
+
+	grep -oP '^#define[ \t]+\K[A-Z_0-9]+' $from_file | grep -v "^__" >> $to_file
 }

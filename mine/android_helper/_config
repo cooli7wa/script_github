@@ -1,0 +1,53 @@
+teei_keywords=(
+	teei
+	\\but_
+	init_thh
+	teei_daemon
+	microtrust
+)
+sepolicy_files=(
+	teei_daemon.te
+	ut_ta_manager_service.te
+	init_thh.te
+)
+atf_plat_files=(
+	plat_teei.c
+	include/plat_teei_inner.h
+	include/plat_teei.h
+	include/platform_def_teei.h
+)
+pl_files=(
+	tz_teei.c
+	inc/imsg_log.h
+	inc/tz_teei.h
+	inc/utos_version.h
+	inc/tz_platform_teei.h
+	kdflib
+)
+#^mt[0-9]+\\.dts$
+#^microtrust_config\\.mk$
+no_common_special_files=(
+	^Android\\.bp$
+	^update-makefiles-helper\\.sh$
+)
+#useage: <begin_tag:end_tag:loop_tag>[:stop_tag1@stop_tag2]
+mark_context=(
+	MICROTRUST_#if:#endif:#if_1
+	MICROTRUST_ifeq:endif:ifeq_1
+	MICROTRUST_ifdef:endif:ifdef_1
+	teeid_#if:#endif:#if_1
+	teeid_ifeq:endif:ifeq_1
+	MICROTRUST_#elif:#endif:#if:#else@#elif_2
+)
+block_context=(
+	\{_utos:\}:utos:\{_1
+	\{_soter-shared-mem:\}:\{_1
+)
+
+########################################
+#tz_init.c@#define\ DBG_ERR
+special_line=(
+	meta_init.rc@/system/etc/init/android.hidl.allocator@1.0-service.rc
+	meta_init.rc@start\ capi-2-0
+	meta_init.rc@start\ hidl_memory
+)

@@ -1,0 +1,5 @@
+#!/bin/bash -
+
+cd $OST_CURRENT_FOLDER
+repo forall -c git clean -df
+repo forall -c git reset --hard HEAD

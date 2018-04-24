@@ -1,0 +1,260 @@
+#/bin/bash -
+
+# $1 android alps folder
+# $2 release package foler
+
+source _utils
+source _config
+source _special_func
+
+ANDROID_ALPS_PATH=$1
+check_var_null ANDROID_ALPS_PATH || exit 1
+RELEASE_PACKAGE_PATH=$2
+check_var_null RELEASE_PACKAGE_PATH || exit 1
+
+check_exist "$ANDROID_ALPS_PATH $RELEASE_PACKAGE_PATH" || exit 1
+check_exist "$RELEASE_PACKAGE_PATH/Android/alps" || exit 1
+
+###################################################################
+
+echo_color GREEN "==== PARSER TARGET SOURCE BEGIN ===="
+
+# kernel version
+KERNEL_VERSION=`ls -1 $ANDROID_ALPS_PATH | grep "kernel-[0-9\.]\+"`
+# platform
+PLATFORM=`ls -1 $ANDROID_ALPS_PATH/device/mediatek | grep -oP '\Kmt[0-9]+$'`
+# atf version
+ATF_VERSION=`cat $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/custom/build/project/$PLATFORM.mk | grep -oP 'MTK_ATF_VERSION=\K.*$'`
+# parser atf platform folder
+ATF_PLATFORM_RPATH=`cd $ANDROID_ALPS_PATH && find vendor/mediatek/proprietary/trustzone/atf/$ATF_VERSION/plat -type d -name $PLATFORM`
+ATF_PLATFORM_PATH="$ANDROID_ALPS_PATH/$ATF_PLATFORM_RPATH"
+
+check_var_null KERNEL_VERSION:PLATFORM:ATF_VERSION || exit 1
+
+echo_color GREEN "==== PARSER TARGET SOURCE END ===="
+
+###################################################################
+
+echo_color BLUE "============ INFO ============="
+echo_color BLUE "ANDROID_ALPS_PATH: $ANDROID_ALPS_PATH"
+echo_color BLUE "KERNEL_VERSION: $KERNEL_VERSION"
+echo_color BLUE "ATF_VERSION: $ATF_VERSION"
+echo_color BLUE "PLATFORM: $PLATFORM"
+echo_color BLUE "ATF_PLATFORM_PATH: $ATF_PLATFORM_PATH"
+echo_color BLUE "==============================="
+
+###################################################################
+
+echo_color GREEN "==== RELEASE PACKAGE FIX BEGIN ===="
+
+# fix atf platform path
+echo "Target path: $ATF_PLATFORM_RPATH"
+PACKAGE_ATF_PLATFORM_NEEDFIX_PATH=`find $RELEASE_PACKAGE_PATH/Android/alps/vendor/mediatek/proprietary/trustzone/atf/$ATF_VERSION/plat -type d -name $PLATFORM | grep -v "$ATF_PLATFORM_RPATH"`
+if [ -n "$PACKAGE_ATF_PLATFORM_NEEDFIX_PATH" ]; then
+	fix_folder_path $RELEASE_PACKAGE_PATH/Android/alps/$ATF_PLATFORM_RPATH $PACKAGE_ATF_PLATFORM_NEEDFIX_PATH
+	echo_color BLUE "fix atf platform path done"
+else
+	echo_color BLUE "fix atf platform path skip"
+fi
+
+echo_color GREEN "==== RELEASE PACKAGE FIX END ===="
+
+###################################################################
+
+echo_color GREEN "==== CLEAN BEGIN ===="
+
+# device
+#	sepolicy
+del_line_in_folder "${teei_keywords[*]}" $ANDROID_ALPS_PATH/device/mediatek/sepolicy/bsp/non_plat
+del_file_in_folder "${sepolicy_files[*]}" $ANDROID_ALPS_PATH/device/mediatek/sepolicy/bsp/non_plat
+check_and_mkdir $ANDROID_ALPS_PATH/device/mediatek/common/sepolicy
+check_and_remove $ANDROID_ALPS_PATH/device/mediatek/common/sepolicy/microtrust
+echo_color BLUE "clean sepolicy done"
+#	device.mk
+del_interval_context "MICROTRUST_TEE_SUPPORT" "ifeq:endif:ifeq" $ANDROID_ALPS_PATH/device/mediatek/$PLATFORM/device.mk 1
+del_interval_context "MICROTRUST_TEE_SUPPORT" "ifeq:endif:ifeq" $ANDROID_ALPS_PATH/device/mediatek/common/device.mk 0
+check_and_remove $ANDROID_ALPS_PATH/device/mediatek/common/microtrust
+echo_color BLUE "clean device.mk done"
+# kernel
+rm -rf $ANDROID_ALPS_PATH/$KERNEL_VERSION/drivers/misc/mediatek/teei
+#rm -rf $ANDROID_ALPS_PATH/kernel-common
+echo_color BLUE "clean linux kernel done"
+# trustzone
+#	custom
+rm -rf $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/custom/build/microtrust_config.mk
+echo_color BLUE "clean trustzone custom done"
+# atf
+#	spd
+rm -rf $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/atf/$ATF_VERSION/services/spd/teeid
+echo_color BLUE "clean atf spd done"
+#	plat
+#cp $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/atf/$ATF_VERSION/plat/mediatek/$PLATFORM/include/plat_teei.h plat_teei_restore.h
+#echo_color GREEN "save atf plat_teei.h done"
+del_file_in_folder "${atf_plat_files[*]}" $ATF_PLATFORM_PATH
+echo_color BLUE "clean atf done"
+# preloader
+#cp $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/bootable/bootloader/preloader/platform/$PLATFORM/src/security/trustzone/inc/tz_teei.h tz_teei_restore.h
+#echo_color GREEN "save pl tz_teei.h done"
+del_file_in_folder "${pl_files[*]}" $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/bootable/bootloader/preloader/platform/$PLATFORM/src/security/trustzone
+echo_color BLUE "clean pl done"
+# vendor
+#	microtrust
+rm -rf $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/microtrust
+echo_color BLUE "clean vendor/microtrust done"
+
+echo_color GREEN "==== CLEAN DONE ===="
+
+###################################################################
+
+echo_color GREEN "==== UPDATE BEGIN ===="
+
+ALL_RELEASE_FILES=`cd $RELEASE_PACKAGE_PATH/Android/alps && find -type f`
+ALL_RELEASE_FILES_TXT="release_files_all.txt"
+SPECIAL_FILES_ALL_TXT="special_files_all.txt"
+SPECIAL_FILES_NO_COMMON_TXT="special_files_no_common.txt"
+SPECIAL_FILES_NORMAL_PATCH_FAILED_TXT="special_files_normal_patch_failed.txt"
+SPECIAL_FILES_TOTAL_PATCH="special_files_total_patch.txt"
+
+echo "$ALL_RELEASE_FILES" > $ALL_RELEASE_FILES_TXT
+> $SPECIAL_FILES_ALL_TXT
+> $SPECIAL_FILES_NO_COMMON_TXT
+> $SPECIAL_FILES_NORMAL_PATCH_FAILED_TXT
+> $SPECIAL_FILES_TOTAL_PATCH
+
+
+# deal with normal files
+all_files_number=0
+special_files_number=0
+ori_pwd=`pwd`
+cd $ANDROID_ALPS_PATH
+for file in $ALL_RELEASE_FILES
+do
+	((all_files_number++))
+	if [ -e $ANDROID_ALPS_PATH/$file ];then
+		((special_files_number++))
+		echo $file >> $ori_pwd/$SPECIAL_FILES_ALL_TXT
+	else
+		folder=${file%/*}
+		if [ ! -e $folder ];then
+			mkdir -p $folder
+		fi
+		cp $RELEASE_PACKAGE_PATH/Android/alps/$file ./$file
+	fi
+done
+cd $ori_pwd
+echo_color SKYBLUE "$((all_files_number-special_files_number))/$all_files_number files copyed, $special_files_number special files not copyed"
+echo_color SKYBLUE "See \"$ALL_RELEASE_FILES_TXT\" \"$SPECIAL_FILES_ALL_TXT\" for detail"
+echo_color BLUE "deal with normal files done"
+
+echo_color BLUE "deal with special files start"
+echo_color BLUE "deal with common special files start"
+# deal with common special files
+# Note can't use "while read file", after patch, "$file" will be change
+cat $SPECIAL_FILES_ALL_TXT | while read line
+do
+	echo "current: $line"
+	# filter files
+	for f in ${no_common_special_files[@]}
+	do
+		file_name=${line##*/}
+		if [[ $file_name =~ $f ]];then
+			echo $line >> $SPECIAL_FILES_NO_COMMON_TXT
+			continue 2
+		fi
+	done
+	target_file=$ANDROID_ALPS_PATH/$line
+	origin_file=$RELEASE_PACKAGE_PATH/Android/alps/$line
+	tmp_file=tmp_file_$file_name
+	tmp_patch=tmp_patch_$file_name
+	#  clean target files
+	clean_file_flow $target_file
+	#  clean origin files & make patch
+	cp $origin_file $tmp_file
+	clean_file_flow $tmp_file
+	diff -U10 $tmp_file $origin_file > $tmp_patch
+	echo "==> $line" >> $SPECIAL_FILES_TOTAL_PATCH
+	diff -U10 $tmp_file $origin_file >> $SPECIAL_FILES_TOTAL_PATCH
+	#  apply patch to target files
+	patch --dry-run -F0 $target_file $tmp_patch 2>&1 >> /dev/null
+	if [ $? -eq 0 ];then
+		patch -s -F0 $target_file $tmp_patch 2>&1 >> /dev/null
+		rm -rf $target_file.orig
+	else
+		echo "Use reinforce patch"
+		echo $line >> $SPECIAL_FILES_NORMAL_PATCH_FAILED_TXT
+#		cp $target_file ./tmp_target_$file_name
+#		cp $origin_file ./tmp_origin_$file_name
+		python ./find_best_place.py -p $tmp_patch -t $target_file -n 3
+		i=0
+		cat ./tmp_return.txt | while read l
+		do
+			((i++))
+			if [ -z "$l" ];then break; fi
+			read s e n bp ap <<< $l
+			sed -n "$s,$e p" $origin_file > ./tmp_block.txt
+			sed -i "$n r ./tmp_block.txt" $target_file
+			if [ "$bp$ap" != "1.001.00" ];then
+				echo_color YELLOW  "Patch block No.$i success, match prop $bp $ap"
+			else
+				echo "Patch block No.$i success, match prop $bp $ap"
+			fi
+		done
+	fi
+	#  clean tmp file
+	rm -rf $tmp_patch $tmp_file ./tmp_return.txt ./tmp_block.txt
+done
+echo_color BLUE "deal with common special files done"
+
+
+echo_color BLUE "deal with no common special files start"
+# deel with other sepcial files
+# ./vendor/mediatek/proprietary/Android.bp
+echo "./vendor/mediatek/proprietary/Android.bp"
+grep -q './vendor/mediatek/proprietary/Android.bp' $SPECIAL_FILES_NO_COMMON_TXT
+if [ $? -eq 0 ]; then
+	> ./tmp_Android_bp.txt
+	origin_file=$RELEASE_PACKAGE_PATH/Android/alps/./vendor/mediatek/proprietary/Android.bp
+	target_file=$ANDROID_ALPS_PATH/./vendor/mediatek/proprietary/Android.bp
+	for k in ${teei_keywords[@]}
+	do
+		grep "$k" $origin_file >> ./tmp_Android_bp.txt
+	done
+	del_line_in_file "${teei_keywords[*]}" $target_file
+	sed -i "1 r ./tmp_Android_bp.txt" $target_file
+	rm -rf ./tmp_Android_bp.txt
+else
+	echo "No such file in $SPECIAL_FILES_NO_COMMON_TXT, skip"
+fi
+# ./system/tools/hidl/update-makefiles-helper.sh
+grep -q './system/tools/hidl/update-makefiles-helper.sh' $SPECIAL_FILES_NO_COMMON_TXT
+if [ $? -eq 0 ]; then
+	echo "./system/tools/hidl/update-makefiles-helper.sh"
+	echo "No need to deal with this file, skip"
+fi
+
+echo_color BLUE "deal with no common special files done"
+
+no_common_special_files_number=`cat $SPECIAL_FILES_NO_COMMON_TXT | wc -l`
+common_special_files_number=$((special_files_number-no_common_special_files_number))
+normal_patch_failed_special_files_number=`cat $SPECIAL_FILES_NORMAL_PATCH_FAILED_TXT | wc -l`
+echo_color SKYBLUE "$common_special_files_number common special files, $no_common_special_files_number no common special files"
+echo_color SKYBLUE "$normal_patch_failed_special_files_number/$common_special_files_number commone special files use enforce patch"
+echo_color SKYBLUE "See \"$SPECIAL_FILES_NO_COMMON_TXT\" \"$SPECIAL_FILES_NORMAL_PATCH_FAILED_TXT\" \"$SPECIAL_FILES_TOTAL_PATCH\" for detail"
+echo_color BLUE "deal with special files done"
+
+echo_color GREEN "==== UPDATE END ===="
+
+###################################################################
+
+echo_color GREEN "==== POST CLEAN BEGIN ===="
+
+rm -rf $ANDROID_ALPS_PATH/vendor/mediatek/proprietary/trustzone/microtrust/source/platform/$PLATFORM/ut_sdk.tar.gz
+echo_color BLUE "deal with ut_sdk.tar.gz done"
+#rm -rf $ANDROID_ALPS_PATH/kernel-common/
+
+echo_color GREEN "==== POST CLEAN END ===="
+
+###################################################################
+
+echo_color GREEN "==== CONFIG BEGIN ===="
+echo_color GREEN "==== CONFIG END ===="

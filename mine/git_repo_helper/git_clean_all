@@ -1,0 +1,5 @@
+#!/bin/bash -
+
+cd $OST_CURRENT_FOLDER
+git clean -df
+git reset --hard HEAD
