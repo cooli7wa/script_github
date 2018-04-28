@@ -1,0 +1,85 @@
+#!/bin/bash -
+
+source _utils
+
+function usage_and_exit
+{
+	local ret=$1
+
+	echo "================= USEAGE ====================="
+    echo "SYNOPSIS"
+	echo "    gerrit_branch [OPTION] <branch_name>"
+    echo "DESCRIPTION"
+	echo "    -r/--revision <revision>"
+	echo "        create branch from revision"
+	echo "        if not -r, default revision is trunk"
+    echo "    -d/--delete"
+	echo "        delete branch instead of create branch"
+	echo "=============================================="
+
+	exit $ret
+}
+
+BRANCH_NAME=""
+REVISION="trunk"
+COMMAND="PUT"
+CURL_URL='http://gerrit.microtrust.com.cn:51002/a/projects/#project#/branches/#branch_name#'
+CURL_CONTENT_TYPE='Content-Type: application/json'
+CURL_DATA='{"revision":"#revision#"}'
+
+while [ "$#" -gt 0 ]
+do
+	case $1 in
+	-r|--revision)
+		REVISION=$2
+		if [[ ! $REVISION =~ ^[0-9a-z_.]+$ ]]; then
+			echo_color RED "Wrong option str: $1 $2"
+			usage_and_exit 1
+		fi
+		shift;;
+	-d|--delete)
+		COMMAND="DELETE";;
+	-h|--help)
+		usage_and_exit 0;;
+	-*|--*)
+		echo_color RED "Unrecongnized option: $1"
+		usage_and_exit 1;;
+	*)
+		break;;
+	esac
+	shift
+done
+
+if [ "$#" -ne 1 ]; then
+	echo_color RED "Parameter wrong"
+	usage_and_exit 1
+fi
+BRANCH_NAME=$1
+
+source password || exit 1
+check_var_null "USER:HTTPPW" || exit 1
+
+###################################################################
+
+echo_color BLUE "============ INFO ============="
+echo_color BLUE "USER: $USER"
+echo_color BLUE "HTTPPW: $HTTPPW"
+echo ""
+echo_color BLUE "BRANCH_NAME: $BRANCH_NAME"
+echo_color BLUE "REVISION: $REVISION"
+echo_color BLUE "COMMAND: $COMMAND"
+echo_color BLUE "==============================="
+
+###################################################################
+
+PROJECT_LIST=`repo list | cut -d ' ' -f 3`
+
+for project in $PROJECT_LIST
+do
+	echo ""
+	echo $project
+	project=${project//\//%2F}
+	CURL_URL_REAL=`echo $CURL_URL | sed "s:#project#:$project:g" | sed "s:#branch_name#:$BRANCH_NAME:g"`
+	CURL_DATA_REAL=`echo $CURL_DATA | sed "s:#revision#:$REVISION:g"`
+	curl -u $USER:$HTTPPW --digest -X $COMMAND $CURL_URL_REAL -H "$CURL_CONTENT_TYPE" -d "$CURL_DATA_REAL"
+done
