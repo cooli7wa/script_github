@@ -1,7 +1,7 @@
 complete -c ccolor
 function ccolor
 {
-    local arr1=(warning#YELLOW#error#RED#failed#RED#fail#RED#note#BLUE#\
+    local keywords=(warning#YELLOW#error#RED#failed#RED#fail#RED#note#BLUE#\
                 警告#YELLOW#错误#RED#附注#BLUE#\
 				undefined reference#RED)
     local except=("make setup" "")
@@ -25,7 +25,7 @@ function ccolor
         fi
     done
 
-    eval "$*" 2>&1 | awk -v arr2="${arr1[*]}" '
+    eval "$*" 2>&1 | awk -v arr2="${keywords[*]}" '
     BEGIN{n=split(arr2,arr3,"#");normal_print=1}
     {
         IGNORECASE=1;
