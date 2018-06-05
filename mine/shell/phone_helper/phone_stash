@@ -4,6 +4,8 @@ REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
 CUSTOM_FOLDER_PATH=$REPO_ROOT/customization/
 NEW_FOLDER_PATH=$CUSTOM_FOLDER_PATH/new
 VENDOR_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor
+OLD_XML_RECORD_FILE_PATH=/tmp/old_xml_path.txt
+OLD_XML=`cat $OLD_XML_RECORD_FILE_PATH`
 
 source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
 
@@ -127,7 +129,7 @@ mrepo forall -c git clean -df
 mv $XML_FILE_PATH $TARGET_FOLDER_PATH/stash/
 mv $PHONE_NAME_FILE_PATH $TARGET_FOLDER_PATH/stash/
 
-smart_xml_change "$unchoosed_folder"
+smart_xml_change "$unchoosed_folder" "$OLD_XML"
 mrepo abandon $PHONE_NAME
 
 echo_color GREEN "Stash \"$PHONE_NAME\" success"

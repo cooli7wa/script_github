@@ -9,6 +9,9 @@ TMP_FILE_PATH=/tmp/phone_start.tmp
 PHONE_NAME_FILE_PATH=$TARGET_FOLDER_PATH/phone_name
 XML_FILE_PATH=$TARGET_FOLDER_PATH/stable.xml
 ORIGIN_XML_FILE=`cd $REPO_ROOT; ls -al .repo/manifest.xml | grep -oP '\-\> \K.*$' | sed 's:^:.repo/:g'`
+OLD_XML=${ORIGIN_XML_FILE##.*/}
+OLD_XML_RECORD_FILE_PATH=/tmp/old_xml_path.txt
+
 PHONE_NAME=""
 PHONE_STABLE_NAME=""
 
@@ -44,8 +47,6 @@ show_info $PHONE_NAME $PHONE_STABLE_NAME
 
 ####################################################################################
 
-#check_xml_projects $COMMON_FOLDER_PATH/$PHONE_STABLE_NAME/stable.xml $ORIGIN_XML_FILE
-
 need_stash=0
 auto_apply=0
 
@@ -65,6 +66,9 @@ fi
 
 echo_color YELLOW "Begin start phone, please wait .."
 
+if [ z"$OLD_XML" != z"stable.xml" ]; then
+	echo $OLD_XML > $OLD_XML_RECORD_FILE_PATH
+fi
 cp $COMMON_FOLDER_PATH/$PHONE_STABLE_NAME/stable.xml  $XML_FILE_PATH
 echo $PHONE_NAME > $PHONE_NAME_FILE_PATH
 

@@ -4,6 +4,8 @@ REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
 ALL_PROJECT_FOLDER=`repo list | cut -d ' ' -f 1`
 COMMON_FOLDER_PATH=$REPO_ROOT/customization/common
 PHONE_HELPER_FOLDER_PATH=$REPO_ROOT/tools_manager/phone_helper
+OLD_XML_RECORD_FILE_PATH=/tmp/old_xml_path.txt
+OLD_XML=`cat $OLD_XML_RECORD_FILE_PATH`
 STABLE_VERSION=""
 MTK_STABLE_NAME=""
 
@@ -98,9 +100,7 @@ mrepo forall -c git reset --hard
 mrepo forall -c git clean -df
 
 #repo init & sync
-echo_color YELLOW "repo init all_trunk.xml and sync"
-mrepo init all_trunk.xml
-mrepo sync -d
+smart_xml_change "" "$OLD_XML"
 mrepo abandon $MTK_STABLE_NAME
 
 echo_color GREEN "Finish \"$MTK_STABLE_NAME\" success"

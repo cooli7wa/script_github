@@ -7,6 +7,13 @@ source _utils
 source _config
 source _special_func
 
+
+###################################################################
+
+DEBUG=0
+
+###################################################################
+
 ANDROID_ALPS_PATH=$1
 check_var_null ANDROID_ALPS_PATH || exit 1
 RELEASE_PACKAGE_PATH=$2
@@ -65,15 +72,15 @@ echo_color GREEN "==== CLEAN BEGIN ===="
 
 # device
 #	sepolicy
-del_line_in_folder "${teei_keywords[*]}" $ANDROID_ALPS_PATH/device/mediatek/sepolicy/bsp/non_plat
+del_keyline_in_folder "${teei_keywords[*]}" $ANDROID_ALPS_PATH/device/mediatek/sepolicy/bsp/non_plat
 del_file_in_folder "${sepolicy_files[*]}" $ANDROID_ALPS_PATH/device/mediatek/sepolicy/bsp/non_plat
 check_and_mkdir $ANDROID_ALPS_PATH/device/mediatek/common/sepolicy
-check_and_remove $ANDROID_ALPS_PATH/device/mediatek/common/sepolicy/microtrust
+rm -rf $ANDROID_ALPS_PATH/device/mediatek/common/sepolicy/microtrust
 echo_color BLUE "clean sepolicy done"
 #	device.mk
 del_interval_context "MICROTRUST_TEE_SUPPORT" "ifeq:endif:ifeq" $ANDROID_ALPS_PATH/device/mediatek/$PLATFORM/device.mk 1
 del_interval_context "MICROTRUST_TEE_SUPPORT" "ifeq:endif:ifeq" $ANDROID_ALPS_PATH/device/mediatek/common/device.mk 0
-check_and_remove $ANDROID_ALPS_PATH/device/mediatek/common/microtrust
+rm -rf $ANDROID_ALPS_PATH/device/mediatek/common/microtrust
 echo_color BLUE "clean device.mk done"
 # kernel
 rm -rf $ANDROID_ALPS_PATH/$KERNEL_VERSION/drivers/misc/mediatek/teei
@@ -182,8 +189,8 @@ do
 	else
 		echo "Use reinforce patch"
 		echo $line >> $SPECIAL_FILES_NORMAL_PATCH_FAILED_TXT
-#		cp $target_file ./tmp_target_$file_name
-#		cp $origin_file ./tmp_origin_$file_name
+		DEBUG cp $target_file ./tmp_target_$file_name
+		DEBUG cp $origin_file ./tmp_origin_$file_name
 		python ./find_best_place.py -p $tmp_patch -t $target_file -n 3
 		i=0
 		cat ./tmp_return.txt | while read l
@@ -201,7 +208,7 @@ do
 		done
 	fi
 	#  clean tmp file
-	rm -rf $tmp_patch $tmp_file ./tmp_return.txt ./tmp_block.txt
+	NODEBUG rm -rf $tmp_patch $tmp_file ./tmp_return.txt ./tmp_block.txt
 done
 echo_color BLUE "deal with common special files done"
 
@@ -219,7 +226,7 @@ if [ $? -eq 0 ]; then
 	do
 		grep "$k" $origin_file >> ./tmp_Android_bp.txt
 	done
-	del_line_in_file "${teei_keywords[*]}" $target_file
+	del_keyline_in_file "${teei_keywords[*]}" $target_file
 	sed -i "1 r ./tmp_Android_bp.txt" $target_file
 	rm -rf ./tmp_Android_bp.txt
 else

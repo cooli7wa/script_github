@@ -4,6 +4,8 @@ REPO_ROOT=`repo info | grep "Mount path" | head -1 | grep -o '/.*/'`
 CUSTOM_FOLDER=$REPO_ROOT/customization/
 NEW_FOLDER=$CUSTOM_FOLDER/new
 VENDOR_FOLDER=$CUSTOM_FOLDER/vendor
+OLD_XML_RECORD_FILE_PATH=/tmp/old_xml_path.txt
+OLD_XML=`cat $OLD_XML_RECORD_FILE_PATH`
 
 source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
 
@@ -61,7 +63,7 @@ if [ $clean_uncommit -eq 1 ];then
 	mrepo forall -c git reset
 	mrepo forall -c git clean -df
 fi
-smart_xml_change "$unchoosed_folder"
+smart_xml_change "$unchoosed_folder" "$OLD_XML"
 rm $XML_FILE
 rm $PHONE_NAME_FILE
 rm -rf $PHONE_IGNORE_PATCH_LIST_FILE_PATH

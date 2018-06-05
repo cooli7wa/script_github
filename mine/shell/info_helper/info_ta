@@ -1,0 +1,33 @@
+TA:UUID:Category:Log Tag
+uTAgent:0102030405060708090a0b0c0d0e0f10:Legacy TA:thhadmin
+IFAA:08010203000000000000000000000000:Legacy TA:alipay
+Mteetester:0102030405060708990a0b0c0d0e0f10:Legacy TA:Mteetest
+fingerprint:7778c03fc30c4dd0a319ea29643d4d4b:Legacy TA:fp_ta
+keymaster:c09c9c5daa504b78b0e46eda61556c3a:Legacy TA:keymaster
+km_key_manager:d91f322ad5a441d5955110eda3272fc0:Legacy TA:kmsetkey
+gatekeeper:c1882f2d885e4e13a8c8e2622461b2fa:Legacy TA:gatekeeper
+SPI:93feffccd8ca11e796c7c7a21acb4932:Framework TA:spi_drv
+I2C:9f208d182b484e84b331baee719d2430:Framework TA:i2cDrv
+I2C gpio:91dba524a6e24909acc48abd7163121a:Framework TA:i2c_gpio
+LCD:115e5aab42d344889ea8f6ed2bbbb717:Framework TA:lcdDrv
+X-input:cfe667cf66bb4fabb9f7d4fc266ec59a:Framework TA:xinDrv
+power:7a52690c6b9140478bcd753cda4e9d41:Framework TA:pwrDrv
+touch screen:8a37dd8e509b493f99ab212a4cb31776:Framework TA:tscDrv
+secure_camera:05110000000000000000000000000000:Framework TA:sec_cam
+drm_01:08110000000000000000000000000000:teei_test TA:drm_01
+drm_03:e97c270ea5c44c58bcd3384a2fa2539e:teei_test TA:drm_03
+drm_04:09010000000000000000000000000000:teei_test TA:drm_04
+drm_06:08030000000000000000000000000000:teei_test TA:drm_06
+drm_07:05110000000000000000000000000000:teei_test TA:drm_07
+drm_51:9073f03a9618383bb1856eb3f990babd:teei_test Driver:drm_51
+drm_52:40188311faf343488db888ad39496f9a:teei_test Driver:drm_52
+drm_55:07060000000000000000000000007169:teei_test Driver:drm_55
+drm_56:020f0000000000000000000000000000:teei_test Driver:drm_56
+drm_57:05120000000000000000000000000000:teei_test Driver:drm_57
+drm_59:91dba524a6e24909acc48abd7163121a:teei_test Driver:drm_59
+test_client_api:0102030405060708990a0b0c0d0e0f10:UT_SDK Test TA:utester
+test_internal_api:0102030405060708990a0b0c0d0e0f10:UT_SDK Test TA:utester
+test_ut_tui_api:0102030405060708090a0b0c0d0e0f03:UT_SDK Test TA:utester
+test_utsdk_btagptee:0102030405060708990a0b0c0d0e0f10:UT_SDK Test TA:utester
+test_utsdk_internal:0102030405060708090a0b0c0d0e0f02:UT_SDK Test TA:utester
+test_utsdk_teei:0102030405060708090a0b0c0d0e0f03:UT_SDK Test TA:utester

@@ -37,6 +37,22 @@ function echo_color
 	echo -e $pre_color$message$post_color
 }
 
+function DEBUG
+{
+
+	if [ $DEBUG -eq 1 ]; then
+		$@
+	fi
+}
+
+function NODEBUG
+{
+
+	if [ $DEBUG -eq 0 ]; then
+		$@
+	fi
+}
+
 function choose_one
 {
 	local all_chooses=$1
@@ -107,13 +123,6 @@ function choose_one
 	eval "$target_var=$target"
 }
 
-function check_and_remove
-{
-	if [ -e "$1" ];then
-		rm -rf "$1"
-	fi
-}
-
 function check_and_mkdir
 {
 	if [ ! -d "$1" ];then
@@ -121,6 +130,8 @@ function check_and_mkdir
 	fi
 }
 
+# remove empty sub folders
+# $1 target folder
 function del_empty_folder
 {
 	find "$1" -mindepth 1 -maxdepth 1 -type d | while read -r dir
@@ -135,10 +146,6 @@ function del_empty_folder
 		fi
 	done
 }
-
-#################
-# special
-#################
 
 # del interval's context
 # $1 reg_begin
@@ -245,31 +252,6 @@ function del_block_context
     done
 }
 
-# del special lines in file
-# $1 file
-function del_special_line
-{
-	local file=$1
-	for s in "${special_line[@]}"
-    do
-		local special_file=${s%%@*}
-		local reg=${s##*@}
-		echo $file | grep -q "$special_file"
-		if [ $? -eq 0 ]; then
-			sed -i "/$reg/d" $file
-		fi
-    done
-}
-
-function clean_file_flow
-{
-	local file=$1
-	del_mark_context $file
-	del_block_context $file
-	del_line_in_file "${teei_keywords[*]}" $file
-	del_special_line $file
-}
-
 # check var if null
 # $1 var1:var2:var3...
 function check_var_null
@@ -286,48 +268,6 @@ function check_var_null
 	done
 
 	return $ret
-}
-
-# del line in folder
-# $1 line keywords
-# $2 folder
-function del_line_in_folder
-{
-	local keywords=$1
-	local folder=$2
-
-	for keyword in $keywords
-	do
-		sed -i "/$keyword/d" $folder/*
-	done
-}
-
-# del line in file
-# $1 line keywords
-# $2 file
-function del_line_in_file
-{
-	local keywords=$1
-	local file=$2
-
-	for keyword in $keywords
-	do
-		sed -i "/$keyword/d" $file
-	done
-}
-
-# del file in folder
-# $1 file names
-# $2 folder
-function del_file_in_folder
-{
-	local files=$1
-	local folder=$2
-
-	for file in $files
-	do
-		rm -rf $folder/$file
-	done
 }
 
 # check file or folder exist
@@ -356,4 +296,71 @@ function exact_define_list
 	local to_file=$2
 
 	grep -oP '^#define[ \t]+\K[A-Z_0-9]+' $from_file | grep -v "^__" >> $to_file
+}
+
+# del keyword line in folder
+# $1 line keywords
+# $2 folder
+function del_keyline_in_folder
+{
+	local keywords=$1
+	local folder=$2
+
+	for keyword in $keywords
+	do
+		sed -i "/$keyword/d" $folder/*
+	done
+}
+
+# del keyword line in file
+# $1 line keywords
+# $2 file
+function del_keyline_in_file
+{
+	local keywords=$1
+	local file=$2
+
+	for keyword in $keywords
+	do
+		sed -i "/$keyword/d" $file
+	done
+}
+
+# del special lines in files
+# $1 target file
+function del_special_line_in_file
+{
+	for s in "${special_line[@]}"
+    do
+		local special_file=${s%%:*}
+		local reg=${s##*:}
+		if [[ $file =~ $special_file$ ]]; then
+			sed -i "/$reg/d" $file
+		fi
+    done
+}
+
+# del file in folder
+# $1 file names
+# $2 folder
+function del_file_in_folder
+{
+	local files=$1
+	local folder=$2
+
+	for file in $files
+	do
+		rm -rf $folder/$file
+	done
+}
+
+# clean all content of attention in file
+# $1 target file
+function clean_file_flow
+{
+	local file=$1
+	del_mark_context $file
+	del_block_context $file
+	del_keyline_in_file "${teei_keywords[*]}" $file
+	del_special_line_in_file $file
 }

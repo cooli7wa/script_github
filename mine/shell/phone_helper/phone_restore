@@ -5,6 +5,8 @@ CUSTOM_FOLDER_PATH=$REPO_ROOT/customization
 VENDOR_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor
 TMP_FILE_PATH=/tmp/phone_restore.tmp
 ORIGIN_XML_FILE=`cd $REPO_ROOT; ls -al .repo/manifest.xml | grep -oP '\-\> \K.*$' | sed 's:^:.repo/:g'`
+OLD_XML=${ORIGIN_XML_FILE##.*/}
+OLD_XML_RECORD_FILE_PATH=/tmp/old_xml_path.txt
 PHONE_NAME=""
 
 source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
@@ -28,8 +30,6 @@ ORIGIN_PHONE_IGNORE_PATCH_LIST_FILE_PATH=$VENDOR_FOLDER_PATH/$PHONE_NAME/ignore_
 show_info $PHONE_NAME $PHONE_STABLE_VERSION
 
 ####################################################################################
-
-#check_xml_projects $CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME/stable.xml $ORIGIN_XML_FILE
 
 for_pick_only=0
 need_checkout=1
@@ -75,6 +75,9 @@ fi
 
 ####################################################################################
 
+if [ z"$OLD_XML" != z"stable.xml" ]; then
+	echo $OLD_XML > $OLD_XML_RECORD_FILE_PATH
+fi
 TARGET_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor/$PHONE_NAME
 PHONE_NAME_FILE_PATH=$VENDOR_FOLDER_PATH/phone_name
 if [ $for_pick_only -eq 1 ];then

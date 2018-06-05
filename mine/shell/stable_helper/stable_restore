@@ -5,6 +5,9 @@ ALL_PROJECT_FOLDER=`repo list | cut -d ' ' -f 1`
 COMMON_FOLDER_PATH=$REPO_ROOT/customization/common
 PHONE_HELPER_FOLDER_PATH=$REPO_ROOT/tools_manager/phone_helper
 MTK_STABLE_NAME=""
+ORIGIN_XML_FILE=`cd $REPO_ROOT; ls -al .repo/manifest.xml | grep -oP '\-\> \K.*$' | sed 's:^:.repo/:g'`
+OLD_XML=${ORIGIN_XML_FILE##.*/}
+OLD_XML_RECORD_FILE_PATH=/tmp/old_xml_path.txt
 
 source $PHONE_HELPER_FOLDER_PATH/_phone_utils
 
@@ -24,6 +27,10 @@ echo_color YELLOW "Begin restore stable, please wait .."
 
 if [ -n "`repo branch | grep " $MTK_STABLE_NAME "`" ];then
 	mrepo abandon $MTK_STABLE_NAME
+fi
+
+if [ z"$OLD_XML" != z"stable.xml" ]; then
+	echo $OLD_XML > $OLD_XML_RECORD_FILE_PATH
 fi
 
 mrepo init -m ../../customization/common/$MTK_STABLE_NAME/stable.xml

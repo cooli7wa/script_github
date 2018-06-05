@@ -5,6 +5,8 @@ CUSTOM_FOLDER_PATH=$REPO_ROOT/customization/
 NEW_FOLDER_PATH=$CUSTOM_FOLDER_PATH/new
 VENDOR_FOLDER_PATH=$CUSTOM_FOLDER_PATH/vendor
 ORIGIN_XML_FILE=`cd $REPO_ROOT; ls -al .repo/manifest.xml | grep -oP '\-\> \K.*$' | sed 's:^:.repo/:g'`
+OLD_XML=${ORIGIN_XML_FILE##.*/}
+OLD_XML_RECORD_FILE_PATH=/tmp/old_xml_path.txt
 
 source $REPO_ROOT/tools_manager/phone_helper/_phone_utils
 
@@ -73,6 +75,9 @@ mrepo forall -c git reset --hard
 mrepo forall -c git clean -df
 
 #restore xml & phone_name
+if [ z"$OLD_XML" != z"stable.xml" ]; then
+	echo $OLD_XML > $OLD_XML_RECORD_FILE_PATH
+fi
 cp $XML_FILE_PATH $TARGET_FOLDER_PATH
 cp $PHONE_NAME_FILE_PATH $TARGET_FOLDER_PATH
 if [ -e $ORIGIN_PHONE_IGNORE_PATCH_LIST_FILE_PATH ]; then

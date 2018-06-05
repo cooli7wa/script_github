@@ -187,12 +187,18 @@ function check_uncommit_changes
 
 function smart_xml_change
 {
-	local folder=$1
+	local unchoosed_folder=$1
+	local old_xml=$2
 	local branch=""
 	local xml=""
 
-	if [ -z $folder ];then
-		xml=all_trunk.xml
+	if [ -z "$unchoosed_folder" ];then
+		if [ -n "$old_xml" ];then
+			xml=$old_xml
+		else
+			xml=all_trunk.xml
+			echo_color YELLOW "old xml $old_xml not exist, use all_trunk.xml instead"
+		fi
 		mrepo init -m $xml
 		mrepo sync -d
 		echo_color YELLOW "repo init $xml, sync -d finished"
