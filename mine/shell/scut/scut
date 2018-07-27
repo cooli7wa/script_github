@@ -1,0 +1,140 @@
+#!/bin/bash -
+
+# use ImageMagick command to take screenshot
+
+CONFIGFILE="$HOME/.scut_config"
+gfolder=""
+gsize=""
+gprename=""
+gfile_name=""
+
+function showUseageAndExit
+{
+    echo "
+                              SCUT
+     NAME
+       scut - take screenshot, resize and store it in specified folder
+     SYNOPSIS
+       scut [OPTIONS...]
+     DESCRIPTION
+       these options will change cfg file ~/.scut_config
+       -f, --folder <folder>
+           specify folder to store image
+       -s, --size <size>
+           specify size to resize image, such as 100x100
+       -p, --prename <name>
+           specify prefix name for image, number will auto increase
+    "
+    exit 0
+}
+
+
+function checkArgNotOption
+{
+	local option=$1
+	local arg=$2
+	if [[ "z$2" =~ "z-.*" ]]; then
+		echo "option $arg missing arg"
+		showUseageAndExit
+	fi
+}
+
+function parseCommandLine
+{
+	while [ $# -gt 0 ]; do
+		case $1 in
+		-f | --folder)
+			checkArgNotOption "$1" "$2"
+			gfolder="$2"
+			shift
+			;;
+		-s | --size)
+			checkArgNotOption "$1" "$2"
+			gsize="$2"
+			shift
+			;;
+		-p | --prename)
+			checkArgNotOption "$1" "$2"
+			gprename="$2"
+			shift
+			;;
+		-* | --*)
+			echo "unknown option: $1"
+			showUseageAndExit
+			;;
+		*)
+			echo "orphan arg: $1"
+			showUseageAndExit
+		esac
+		shift
+	done
+}
+
+function readConfig
+{
+	if [ -f $CONFIGFILE ]; then
+		read gfolder gsize gprename < $CONFIGFILE
+	fi
+}
+
+function writeConfig
+{
+	touch $CONFIGFILE
+	echo "$gfolder $gsize $gprename" > $CONFIGFILE
+}
+
+function checkNotNull
+{
+	while [ $# -gt 0 ]; do
+		local var=`eval echo '$'$1`
+		if [ -z "$var" ]; then
+			echo "$1 is null"
+			showUseageAndExit
+		fi
+		shift
+	done
+}
+
+function checkFolderExist
+{
+	local folder=`eval echo '$'$1`
+	if [ ! -e $folder ]; then
+		echo "$folder not exist"
+		showUseageAndExit
+	fi
+}
+
+function genarateFileName
+{
+	local cur_num=0
+	ls  "$gfolder/${gprename}_*.png" > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		cur_num=-1
+	else
+		cur_num=`ls $gfolder | grep "${gprename}_.*png" | tail -1 | sed -r 's/.*_([0-9]+).png/\1/g'`
+	fi
+	local target_num=$((cur_num+1))
+	gfile_name=${gprename}_$target_num.png
+}
+
+if [ $# -ne 0 ]; then
+	readConfig
+	parseCommandLine "$@"
+	checkNotNull "gfolder" "gsize" "gprename"
+	checkFolderExist "gfolder"
+	writeConfig
+	exit 0
+fi
+
+readConfig
+checkNotNull "gfolder" "gsize" "gprename"
+checkFolderExist "gfolder"
+genarateFileName
+
+import $gfolder/$gfile_name
+convert -resize $gsize $gfolder/$gfile_name $gfolder/$gfile_name
+eog $gfolder/$gfile_name &
+
+sleep 1
+pkill -f $gfolder/$gfile_name
+
