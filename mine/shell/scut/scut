@@ -107,7 +107,7 @@ function checkFolderExist
 function genarateFileName
 {
 	local cur_num=0
-	ls  "$gfolder/${gprename}_*.png" > /dev/null 2>&1
+	ls  $gfolder/${gprename}_*.png > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
 		cur_num=-1
 	else
