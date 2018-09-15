@@ -4,6 +4,7 @@
 "\e[17~": "git push ut_repo HEAD:refs/for/trunk"
 "\e[18~": "sed -i 's/\\t/    /g' "
 "\e[19~": "sed -i 's/[\\t ]\\+$//g' "
+"\e[20~": " | sed 's/../0x&, /g'"
 "\e[A": history-search-backward
 "\e[B": history-search-forward
 set show-all-if-ambiguous on
