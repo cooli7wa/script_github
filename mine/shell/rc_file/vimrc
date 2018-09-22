@@ -82,8 +82,8 @@ nnoremap <silent> <F7> :AsyncRun -cwd=<root> make <cr>
 nnoremap <silent> <F8> :AsyncRun -cwd=<root> -raw make run <cr>
 " 项目：测试
 nnoremap <silent> <F9> :AsyncRun -cwd=<root> -raw make test <cr>
-" 设置 F10 打开/关闭 Quickfix 窗口
-nnoremap <F10> :call asyncrun#quickfix_toggle(6)<cr>
+" 设置 ctrl+m 打开/关闭 Quickfix 窗口
+nnoremap <c-m> :call asyncrun#quickfix_toggle(6)<cr>
 
 " =================== ALE 代码检查 =====================
 let g:ale_linters_explicit = 1
@@ -119,6 +119,7 @@ let g:ycm_filetype_whitelist = {
 			\ "c":1,
 			\ "cpp":1,
 			\ "sh":1,
+			\ "go":1,
 			\ }
 noremap <c-z> <NOP>
 
@@ -163,4 +164,5 @@ else
   Plug 'roxma/nvim-yarp'
   Plug 'roxma/vim-hug-neovim-rpc'
 endif
+Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 call plug#end()
