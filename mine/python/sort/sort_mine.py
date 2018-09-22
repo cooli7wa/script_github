@@ -25,7 +25,7 @@ import random
 #             result.append(right[j])
 #             j += 1
 #     result += left[i:]
-#     result += right[i:]
+#     result += right[j:]
 #     return result
 
 # dui, O(nlogn), O(1)
