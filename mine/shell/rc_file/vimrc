@@ -68,7 +68,7 @@ noremap <c-l> :PreviewClose<cr>
 let g:asyncrun_open = 6
 
 " 设置 ctrl+m 打开/关闭 Quickfix 窗口
-nnoremap <silent> <c-h> :call asyncrun#quickfix_toggle(6)<cr>
+noremap <silent> <c-h> :call asyncrun#quickfix_toggle(6)<cr>
 
 " =================== ALE 代码检查 =====================
 let g:ale_linters_explicit = 1
@@ -114,6 +114,11 @@ let g:Lf_StlColorscheme = 'powerline'
 let g:Lf_PreviewResult = {'Function':0, 'BufTag':0}
 noremap <c-f> :LeaderfFunction!<cr>
 
+"==================== make 相关 =========================
+noremap <F5> :GoRun<cr>
+noremap <F6> :GoDoc<cr>
+noremap <F7> :GoImports<cr>
+
 " =================== vim-plug 相关 =====================
 call plug#begin('~/.vim/plugged')
 Plug 'ludovicchabant/vim-gutentags'
@@ -138,3 +143,27 @@ endif
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 Plug 'nsf/gocode', { 'rtp': 'vim', 'do': '~/.vim/plugged/gocode/vim/symlink.sh' }
 call plug#end()
+
+"""""""""""""""
+"快捷键映射关系
+"""""""""""""""
+"F5, GoRun
+"F6, GoDoc
+"F7, GoImports
+
+"F12, 粘贴复制
+"F11, 全屏
+
+"ctrl+f，列出函数列表
+"ctrl+p，查找打开文件
+
+"\cc，查找引用
+"\ce，全局查找
+"ctrl+i, preview 上滚动
+"ctrl+k，preview 下滚动
+"ctrl+j，在 preview 中浏览
+"ctrl+l，关闭 preview
+"ctrl+h，关闭 quickfix
+
+"ctrl+]，跳到定义处
+"ctrl+o，返回上一个位置
