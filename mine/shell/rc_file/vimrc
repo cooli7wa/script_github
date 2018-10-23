@@ -67,23 +67,8 @@ noremap <c-l> :PreviewClose<cr>
 " 自动打开 quickfix window ，高度为 6
 let g:asyncrun_open = 6
 
-" 任务结束时候响铃提醒
-let g:asyncrun_bell = 1
-
-" 使用 cmake 更新 makefile
-nnoremap <silent> <F4> :AsyncRun -cwd=<root> cmake . <cr>
-" 单文件：编译
-nnoremap <silent> <F5> :AsyncRun gcc -Wall -O2 "$(VIM_FILEPATH)" -o "$(VIM_FILEDIR)/$(VIM_FILENOEXT)" <cr>
-" 单文件：运行
-nnoremap <silent> <F6> :AsyncRun -cwd=$(VIM_FILEDIR) -mode=4 "$(VIM_FILEDIR)/$(VIM_FILENOEXT)" <cr>
-" 项目：编译
-nnoremap <silent> <F7> :AsyncRun -cwd=<root> make <cr>
-" 项目：运行
-nnoremap <silent> <F8> :AsyncRun -cwd=<root> -raw make run <cr>
-" 项目：测试
-nnoremap <silent> <F9> :AsyncRun -cwd=<root> -raw make test <cr>
 " 设置 ctrl+m 打开/关闭 Quickfix 窗口
-nnoremap <c-m> :call asyncrun#quickfix_toggle(6)<cr>
+nnoremap <silent> <c-h> :call asyncrun#quickfix_toggle(6)<cr>
 
 " =================== ALE 代码检查 =====================
 let g:ale_linters_explicit = 1
@@ -104,31 +89,20 @@ let g:ale_cpp_cppcheck_options = ''
 set completeopt=menu,menuone
 let g:ycm_add_preview_to_completeopt = 0
 let g:ycm_show_diagnostics_ui = 0
-let g:ycm_server_log_level = 'debug'
+let g:ycm_server_log_level = 'info'
 let g:ycm_server_keep_logfiles = 1
 let g:ycm_min_num_identifier_candidate_chars = 2
 let g:ycm_collect_identifiers_from_comments_and_strings = 1
 let g:ycm_complete_in_strings=1
-let g:ycm_key_invoke_completion = '<c-z>'
 let g:ycm_global_ycm_extra_conf = '~/.vim/plugged/YouCompleteMe/third_party/ycmd/.ycm_extra_conf.py'
-let g:ycm_semantic_triggers =  {
-           \ 'c,cpp,python,java,go,erlang,perl': ['re!\w{2}'],
-           \ 'cs,lua,javascript': ['re!\w{2}'],
-           \ }
-let g:ycm_filetype_whitelist = {
-			\ "c":1,
-			\ "cpp":1,
-			\ "sh":1,
-			\ "go":1,
-			\ }
-noremap <c-z> <NOP>
+let g:ycm_semantic_triggers =  { 'c,cpp,go': ['re!\w{2}'] }
+let g:ycm_filetype_whitelist = { "c":1, "cpp":1, "go":1 }
 
 " =================== deoplete 异步补全  =====================
 let g:deoplete#enable_at_startup = 1
 
 " =================== LeaderF 显示文件列表，查找文件 =====================
 let g:Lf_ShortcutF = '<c-p>'
-"let g:Lf_ShortcutB = '<c-n>'
 let g:Lf_StlSeparator = { 'left': '', 'right': '', 'font': '' }
 let g:Lf_RootMarkers = ['.project', '.root', '.svn', '.git']
 let g:Lf_WorkingDirectoryMode = 'Ac'
@@ -138,10 +112,7 @@ let g:Lf_ShowRelativePath = 0
 let g:Lf_HideHelp = 1
 let g:Lf_StlColorscheme = 'powerline'
 let g:Lf_PreviewResult = {'Function':0, 'BufTag':0}
-"noremap <c-m> :LeaderfMru<cr>
 noremap <c-f> :LeaderfFunction!<cr>
-"noremap <c-b> :LeaderfBuffer<cr>
-"noremap <c-c> :LeaderfTag<cr>
 
 " =================== vim-plug 相关 =====================
 call plug#begin('~/.vim/plugged')
@@ -165,4 +136,5 @@ else
   Plug 'roxma/vim-hug-neovim-rpc'
 endif
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+Plug 'nsf/gocode', { 'rtp': 'vim', 'do': '~/.vim/plugged/gocode/vim/symlink.sh' }
 call plug#end()

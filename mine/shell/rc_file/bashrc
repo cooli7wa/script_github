@@ -723,7 +723,7 @@ function fwq_mount
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 
-export PATH=$PATH:/usr/local/go/bin
-export GOPATH=~/go
+export GOPATH=/home/cooli7wa/go
 export GOBIN=$GOPATH/bin
 export GOROOT=/usr/local/go
+export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
