@@ -116,8 +116,7 @@ noremap <c-f> :LeaderfFunction!<cr>
 
 "==================== make 相关 =========================
 noremap <F5> :GoRun<cr>
-noremap <F6> :GoDoc<cr>
-noremap <F7> :GoImports<cr>
+noremap <F6> :GoImports<cr>
 
 " =================== vim-plug 相关 =====================
 call plug#begin('~/.vim/plugged')
@@ -148,8 +147,7 @@ call plug#end()
 "快捷键映射关系
 """""""""""""""
 "F5, GoRun
-"F6, GoDoc
-"F7, GoImports
+"F6, GoImports
 
 "F12, 粘贴复制
 "F11, 全屏
