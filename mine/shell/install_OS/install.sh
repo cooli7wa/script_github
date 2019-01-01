@@ -26,28 +26,25 @@ function echo_color
 }
 
 
-packages="vim zlib1g-dev:i386 g++-multilib ssh make gawk g++ binutils pkg-config synaptic terminator ant u-boot-tools gperf bison doxygen libswitch-perl libxml2-utils libssl-dev xsel adb git sshfs repo curl"
+packages="vim zlib1g-dev:i386 g++-multilib ssh make gawk g++ binutils pkg-config synaptic terminator ant u-boot-tools gperf bison doxygen libswitch-perl libxml2-utils libssl-dev xsel adb git sshfs repo curl cmake cmake-curses-gui"
 
-echo_color RED "apt-get update .."
+echo_color YELLOW "== begin to install necessary cmds and libraries =="
+
+echo_color BLUE "apt-get update .."
 sudo apt-get update
 
-echo_color RED "apt-get install .."
+echo_color BLUE "apt-get install .."
 sudo apt-get install -y $packages
 
-echo_color RED "install openjdk-8 .. (1604 don't need)"
-
-echo_color RED "install chrome .."
-sudo dpkg -i google-chrome-stable_current_amd64.deb
-
-echo_color RED "install sogou .."
-sudo dpkg -i sogoupinyin_2.2.0.0102_amd64.deb
-echo_color YELLOW "please config next: \"im-config\" \"fcitx-config-gtk3\""
-
-echo_color RED "install needed libraries before.."
+echo_color BLUE "install needed libraries before.."
 sudo apt-get install -f -y
 
-echo_color RED "config bashrc inputrc vimrc .."
-
-echo_color RED "generate sshkey .."
+echo_color BLUE "generate sshkey .."
 sudo ssh-keygen
 cat ~/.ssh/id_rsa.pub
+
+echo_color YELLOW "== something todo =="
+echo_color BLUE "1. config bashrc inputrc vimrc"
+echo_color BLUE "2. config vim"
+echo_color BLUE "3. config github sshkey"
+echo_color BLUE "4. docker"
