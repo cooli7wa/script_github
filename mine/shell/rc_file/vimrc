@@ -84,6 +84,7 @@ let g:ale_c_gcc_options = '-Wall -O2 -std=c99'
 let g:ale_cpp_gcc_options = '-Wall -O2 -std=c++14'
 let g:ale_c_cppcheck_options = ''
 let g:ale_cpp_cppcheck_options = ''
+let g:ale_c_parse_compile_commands = 1
 
 " =================== ycm 代码补全 =====================
 set completeopt=menu,menuone
@@ -98,6 +99,7 @@ let g:ycm_global_ycm_extra_conf = '~/.vim/plugged/YouCompleteMe/third_party/ycmd
 let g:ycm_semantic_triggers =  { 'c,cpp,go': ['re!\w{2}'] }
 let g:ycm_filetype_whitelist = { "c":1, "cpp":1, "go":1 }
 
+ "
 " =================== deoplete 异步补全  =====================
 let g:deoplete#enable_at_startup = 1
 
@@ -139,8 +141,8 @@ else
   Plug 'roxma/nvim-yarp'
   Plug 'roxma/vim-hug-neovim-rpc'
 endif
-Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
-Plug 'nsf/gocode', { 'rtp': 'vim', 'do': '~/.vim/plugged/gocode/vim/symlink.sh' }
+"Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+"Plug 'nsf/gocode', { 'rtp': 'vim', 'do': '~/.vim/plugged/gocode/vim/symlink.sh' }
 call plug#end()
 
 """""""""""""""
@@ -157,6 +159,8 @@ call plug#end()
 
 "\cc，查找引用
 "\ce，全局查找
+"\cg, 查找定义
+"g]，列出所有匹配的tag，与ctrl]再ts一样
 "ctrl+i, preview 上滚动
 "ctrl+k，preview 下滚动
 "ctrl+j，在 preview 中浏览
